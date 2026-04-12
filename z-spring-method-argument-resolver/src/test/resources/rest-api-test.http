@@ -1,0 +1,58 @@
+### login
+POST http://localhost:8081/api/v1/login
+Content-Type: application/json
+channel: WEB
+
+{
+  "cardType": "CREDIT_CARD",
+  "cardNumber": "89839889",
+  "password": "88388000"
+}
+
+> {%
+  client.global.set("access_token", response.body.token);
+%}
+
+### transfer 1
+POST http://localhost:8081/api/v1/transfer1
+Content-Type: application/json
+x-access-token: {{access_token}}
+
+{
+  "fromAccount": "898989111",
+  "toAccount": "1111231"
+}
+
+### transfer 2
+POST http://localhost:8081/api/v1/transfer2
+Content-Type: application/json
+x-access-token: {{access_token}}
+
+{
+  "fromAccount": "8989892222",
+  "toAccount": "1111231"
+}
+
+### transfer 3
+POST http://localhost:8081/api/v1/transfer3
+Content-Type: application/json
+x-access-token: {{access_token}}
+
+{
+  "fromAccount": "8989893333",
+  "toAccount": "11112321"
+}
+
+### transfer 4
+GET http://localhost:8081/api/v1/transfer4
+Content-Type: application/json
+x-access-token: {{access_token}}
+
+{
+  "fromAccount": "898989",
+  "toAccount": "1111231"
+}
+
+
+### API DOC
+GET http://localhost:8081/api/docs

@@ -1,0 +1,23 @@
+plugins {
+    id 'base'       // to provide standard lifecylce tasks such as clean, build, check
+}
+
+// create new tasks for includeBuild since its lifecycle is standablone and is not involved in the root by default
+// composite build -- includeBuild
+//           not a standard subproject build which is managed in the root by default
+
+tasks.register("build-included-build") {
+    dependsOn(gradle.includedBuild('z-spring-gateway').task(':build'))
+}
+
+tasks.register("clean-included-build") {
+    dependsOn(gradle.includedBuild('z-spring-gateway').task(':clean'))
+}
+
+tasks.named("build") {
+    dependsOn("build-included-build")
+}
+
+tasks.named("clean") {
+    dependsOn("clean-included-build")
+}

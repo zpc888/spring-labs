@@ -1,0 +1,16 @@
+rootProject.name = 'spring-labs'
+
+// 1. standard subprojects -- use the full path in the dependencies
+// include 'z-spring-gateway:gateway'
+// include 'z-spring-gateway:hello-service'
+
+// 2. composite build -- it has its own settings.gradle
+//    its grandchild dependencies path are up to the closest settings.gradle
+//
+// IMPORTANT NOTE: 
+//   1. since it's includeBuild ./gradlew :z-spring-gateway:clean won't trigger z-spring-gateway children's clean
+//   2. but cd z-spring-gateway; ../gradlew clean will trigger since it's normal multiple project
+//   3. you can custom z-spring-gateway/build.gradle to let z-spring-gateway children depends on z-spring-gateway tasks -- see commented explicit declaration
+
+includeBuild 'z-spring-gateway'
+include 'z-spring-method-argument-resolver'

@@ -1,0 +1,5 @@
+rootProject.name = 'z-spring-gateway'
+
+include 'gateway'
+include 'hello-service'
+
