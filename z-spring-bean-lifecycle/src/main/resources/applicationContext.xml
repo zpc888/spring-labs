@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation="
+           http://www.springframework.org/schema/beans
+           http://www.springframework.org/schema/beans/spring-beans.xsd
+           http://www.springframework.org/schema/context
+           http://www.springframework.org/schema/context/spring-context.xsd">
+
+    <!-- Enable annotation processing for @PostConstruct and @PreDestroy -->
+    <context:annotation-config/>
+
+    <!-- Custom BeanPostProcessor to demonstrate its role in the lifecycle -->
+    <bean id="customBeanPostProcessor" class="com.example.lifecycle.bean.CustomBeanPostProcessor"/>
+
+    <!-- LifecycleBean - demonstrates all lifecycle callbacks -->
+    <bean id="lifecycleBean" class="com.example.lifecycle.bean.LifecycleBean"
+          init-method="customInit" destroy-method="customDestroy"/>
+
+    <!-- ServiceBean - dependency of ControllerBean -->
+    <bean id="serviceBean" class="com.example.lifecycle.bean.ServiceBean"
+          init-method="customInit" destroy-method="customDestroy"/>
+
+    <!-- ControllerBean - depends on ServiceBean -->
+    <bean id="controllerBean" class="com.example.lifecycle.bean.ControllerBean"
+          init-method="customInit" destroy-method="customDestroy">
+        <property name="service" ref="serviceBean"/>
+    </bean>
+
+</beans>

@@ -1,0 +1,40 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'com.example'
+version = '1.0.0-SNAPSHOT'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Spring Context (required for bean lifecycle)
+    implementation 'org.springframework:spring-context:6.1.13'
+
+    // Jakarta Annotations for @PostConstruct and @PreDestroy
+    implementation 'jakarta.annotation:jakarta.annotation-api:2.1.1'
+
+    // JUnit 5 for testing
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testImplementation 'org.springframework:spring-test:6.1.13'
+
+    // Log4j2 for logging
+    implementation 'org.apache.logging.log4j:log4j-core:2.23.1'
+    implementation 'org.apache.logging.log4j:log4j-api:2.23.1'
+}
+
+application {
+    mainClass = 'com.example.lifecycle.Main'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}

@@ -12,5 +12,6 @@ rootProject.name = 'spring-labs'
 //   2. but cd z-spring-gateway; ../gradlew clean will trigger since it's normal multiple project
 //   3. you can custom z-spring-gateway/build.gradle to let z-spring-gateway children depends on z-spring-gateway tasks -- see commented explicit declaration
 
+include 'z-spring-bean-lifecycle'
 includeBuild 'z-spring-gateway'
 include 'z-spring-method-argument-resolver'
