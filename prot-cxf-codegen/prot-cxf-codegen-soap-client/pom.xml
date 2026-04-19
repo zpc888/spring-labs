@@ -13,6 +13,11 @@
 
     <dependencies>
         <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <version>2.2</version>
+        </dependency>
+        <dependency>
             <groupId>jakarta.xml.bind</groupId>
             <artifactId>jakarta.xml.bind-api</artifactId>
             <version>4.0.0</version>
@@ -26,6 +31,12 @@
             <groupId>jakarta.jws</groupId>
             <artifactId>jakarta.jws-api</artifactId>
             <version>3.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.10.2</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
@@ -50,10 +61,65 @@
                                     <extraargs>
                                         <extraarg>-fe</extraarg>
                                         <extraarg>prot-cxf</extraarg>
+                                        <extraarg>-clientGenConfig</extraarg>
+                                        <extraarg>${basedir}/src/main/resources/client-gen-config.yaml</extraarg>
+                                    </extraargs>
+                                </wsdlOption>
+                                <wsdlOption>
+                                    <wsdl>${basedir}/src/main/resources/calculator.wsdl</wsdl>
+                                    <extraargs>
+                                        <extraarg>-fe</extraarg>
+                                        <extraarg>prot-cxf</extraarg>
+                                        <extraarg>-clientGenConfig</extraarg>
+                                        <extraarg>${basedir}/src/main/resources/client-gen-config.yaml</extraarg>
+                                    </extraargs>
+                                </wsdlOption>
+                                <!--
+                                    same execution cannot have 2 same wsdl, otherwise it says conflict, alias name is ok,
+                                    or use different execution
+                                -->
+<!--                                <wsdlOption>-->
+<!--                                    <wsdl>${basedir}/src/main/resources/calculator2.wsdl</wsdl>-->
+<!--                                    <extraargs>-->
+<!--                                        <extraarg>-exsh</extraarg>-->
+<!--                                        <extraarg>true</extraarg>-->
+<!--                                        <extraarg>-p</extraarg>-->
+<!--                                        <extraarg>com.example.calc.header</extraarg>-->
+<!--                                        <extraarg>-fe</extraarg>-->
+<!--                                        <extraarg>prot-cxf</extraarg>-->
+<!--                                        <extraarg>-clientGenConfig</extraarg>-->
+<!--                                        <extraarg>${basedir}/src/main/resources/client-gen-config.yaml</extraarg>-->
+<!--                                    </extraargs>-->
+<!--                                </wsdlOption>-->
+                            </wsdlOptions>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>generate-sources-with-header</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>wsdl2java</goal>
+                        </goals>
+                        <configuration>
+                            <!-- default will be under its sub-folder cxf -->
+                            <sourceRoot>${project.build.directory}/generated-sources/</sourceRoot>
+                            <wsdlOptions>
+                                <wsdlOption>
+                                    <wsdl>${basedir}/src/main/resources/calculator.wsdl</wsdl>
+                                    <extraargs>
+                                        <extraarg>-exsh</extraarg>
+                                        <extraarg>true</extraarg>
+                                        <extraarg>-p</extraarg>
+                                        <extraarg>com.prot.calc.header</extraarg>
+                                        <extraarg>-fe</extraarg>
+                                        <extraarg>prot-cxf</extraarg>
+                                        <extraarg>-clientGenConfig</extraarg>
+                                        <extraarg>${basedir}/src/main/resources/client-gen-config.yaml</extraarg>
                                     </extraargs>
                                 </wsdlOption>
                             </wsdlOptions>
                         </configuration>
+
                     </execution>
                 </executions>
                 <dependencies>
@@ -63,6 +129,14 @@
                         <version>1.0-SNAPSHOT</version>
                     </dependency>
                 </dependencies>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
+                <configuration>
+                    <useModulePath>false</useModulePath>
+                </configuration>
             </plugin>
         </plugins>
     </build>

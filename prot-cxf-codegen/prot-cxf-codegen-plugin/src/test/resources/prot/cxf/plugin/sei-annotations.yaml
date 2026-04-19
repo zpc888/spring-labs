@@ -1,0 +1,4 @@
+sei:
+  annotations:
+    - com.example.CustomAnnotation
+

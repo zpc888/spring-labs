@@ -6,6 +6,30 @@ Sample shows howto implement and use Service Endpoint Interface (SEI) generator.
 Custom generator extends the default one, but provides a different velocity template. 
 This velocity template is identical to the default one, except that custom annotations via soap-gen.yaml added for generated SEI.
 
+## client-gen-config support
+
+Custom annotations can be injected with `-client-gen-config`:
+
+```xml
+<extraargs>
+  <extraarg>-fe</extraarg>
+  <extraarg>prot-cxf</extraarg>
+  <extraarg>-client-gen-config</extraarg>
+  <extraarg>client-gen-config.yaml</extraarg>
+</extraargs>
+```
+
+YAML format:
+
+```yaml
+sei:
+  annotations:
+	- com.example.MySeiAnnotation
+operations:
+  pingOperation:
+	- com.example.MyOperationAnnotation
+```
+
 Credit to  https://github.com/valmol/samples-cxf-codegen-plugin.git 
 Inspired by https://github.com/playframework/play-soap#wsdl2java
 

@@ -1,0 +1,11 @@
+     {
+            "version": "1.0",
+            "permissions": {
+                      "edit": [
+                {
+                  "pattern": "prot-cxf-codegen/**",
+                  "action": "allow"
+                }
+                              ]                                                            }
+                  }
+

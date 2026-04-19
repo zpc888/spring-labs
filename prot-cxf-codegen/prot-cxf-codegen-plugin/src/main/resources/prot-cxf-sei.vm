@@ -43,6 +43,15 @@ import ${import};
 #foreach ($annotation in $intf.Annotations)
     $annotation
 #end
+#if ($customSeiAnnotations)
+#foreach ($annotation in $customSeiAnnotations)
+    #if($annotation.startsWith("@"))
+    $annotation
+    #else
+    @$annotation
+    #end
+#end
+#end
 #if ($markGenerated == "true")
 @Generated(value = "org.apache.cxf.tools.wsdlto.WSDLToJava"#if ($suppressGeneratedDate != "true"), date = "$currentdate"#end, comments = "$fullversion")
 #end
@@ -56,6 +65,16 @@ public interface $intf.Name ${seiSuperinterfaceString}{
     #end
     #foreach ($annotation in $method.Annotations)
         $annotation
+    #end
+    #set($methodCustomAnnotations = $customOperationAnnotations.get($method.Name))
+    #if ($methodCustomAnnotations)
+    #foreach ($annotation in $methodCustomAnnotations)
+        #if($annotation.startsWith("@"))
+        $annotation
+        #else
+        @$annotation
+        #end
+    #end
     #end
     #if ($markGenerated == "true")
     @Generated(value = "org.apache.cxf.tools.wsdlto.WSDLToJava"#if ($suppressGeneratedDate != "true"), date = "$currentdate"#end)

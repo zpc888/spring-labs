@@ -1,0 +1,17 @@
+ {
+   "version": "1.0",
+   "permissions": {
+     "edit": [
+       {
+         "pattern": "prot-cxf-codegen/**",
+         "action": "allow"
+       },
+       {
+         "pattern": "*.xml",
+         "action": "allow"
+       },
+       {                                                                "pattern": "*.java",
+         "action": "allow"
+       }                                                            ]
+      }
+ }

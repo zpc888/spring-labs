@@ -1,0 +1,10 @@
+sei:
+  annotations:
+    - com.ibm.was.wssample.sei.ping.annotations.GeneratedSei
+operations:
+  pingOperation:
+    - com.ibm.was.wssample.sei.ping.annotations.GeneratedOperation
+  Add:
+    - com.prot.cal.AddAnnotation
+  Subtract:
+    - com.prot.cal.SubtractAnnotation

@@ -1,0 +1,7 @@
+sei:
+  annotations:
+    - com.example.ConfigBSei
+operations:
+  pingOperation:
+    - com.example.ConfigBOperation
+
