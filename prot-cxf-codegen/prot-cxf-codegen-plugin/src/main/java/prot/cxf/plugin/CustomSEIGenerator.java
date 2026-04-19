@@ -16,7 +16,7 @@ public class CustomSEIGenerator extends SEIGenerator {
     protected void doWrite(String templateName, Writer outputs) throws ToolException {
 
         if (templateName.endsWith("/sei.vm")) {
-            templateName = "sample-sei.vm";
+            templateName = "prot-cxf-sei.vm";
         }
 
         super.doWrite(templateName, outputs);

@@ -49,7 +49,7 @@
                                     <wsdl>${basedir}/src/main/resources/ping.wsdl</wsdl>
                                     <extraargs>
                                         <extraarg>-fe</extraarg>
-                                        <extraarg>sample</extraarg>
+                                        <extraarg>prot-cxf</extraarg>
                                     </extraargs>
                                 </wsdlOption>
                             </wsdlOptions>
