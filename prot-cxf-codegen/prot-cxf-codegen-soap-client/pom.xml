@@ -68,7 +68,7 @@
                                         <extraarg>-fe</extraarg>
                                         <extraarg>prot-cxf</extraarg>
                                         <extraarg>-clientGenConfig</extraarg>
-                                        <extraarg>${basedir}/src/main/resources/client-gen-config.yaml</extraarg>
+                                        <extraarg>${basedir}/src/main/resources/client-gen-config-for-ping.yaml</extraarg>
                                     </extraargs>
                                 </wsdlOption>
                                 <wsdlOption>
@@ -77,7 +77,7 @@
                                         <extraarg>-fe</extraarg>
                                         <extraarg>prot-cxf</extraarg>
                                         <extraarg>-clientGenConfig</extraarg>
-                                        <extraarg>${basedir}/src/main/resources/client-gen-config.yaml</extraarg>
+                                        <extraarg>${basedir}/src/main/resources/client-gen-config-for-calc1.yaml</extraarg>
                                     </extraargs>
                                 </wsdlOption>
                                 <!--
@@ -94,7 +94,7 @@
 <!--                                        <extraarg>-fe</extraarg>-->
 <!--                                        <extraarg>prot-cxf</extraarg>-->
 <!--                                        <extraarg>-clientGenConfig</extraarg>-->
-<!--                                        <extraarg>${basedir}/src/main/resources/client-gen-config.yaml</extraarg>-->
+<!--                                        <extraarg>${basedir}/src/main/resources/client-gen-config-for-calc1.yaml</extraarg>-->
 <!--                                    </extraargs>-->
 <!--                                </wsdlOption>-->
                             </wsdlOptions>
@@ -121,7 +121,7 @@
                                         <extraarg>-fe</extraarg>
                                         <extraarg>prot-cxf</extraarg>
                                         <extraarg>-clientGenConfig</extraarg>
-                                        <extraarg>${basedir}/src/main/resources/client-gen-config.yaml</extraarg>
+                                        <extraarg>${basedir}/src/main/resources/client-gen-config-for-calc1.yaml</extraarg>
                                     </extraargs>
                                 </wsdlOption>
                             </wsdlOptions>

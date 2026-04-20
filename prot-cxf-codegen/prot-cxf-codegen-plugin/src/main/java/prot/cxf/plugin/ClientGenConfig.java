@@ -6,45 +6,52 @@ import java.util.Map;
 
 public class ClientGenConfig {
 
-    private Sei sei;
-    private Map<String, List<String>> operations;
+    private String configKey;
+    private List<StaticHeader> staticHeaders;
+    private List<String> dynamicHeaders;
+    private Map<String, OperationConfig> operations;
 
-    public Sei getSei() {
-        return sei;
+    public String getConfigKey() {
+        return configKey;
     }
 
-    public void setSei(Sei sei) {
-        this.sei = sei;
+    public void setConfigKey(String configKey) {
+        this.configKey = configKey;
     }
 
-    public Map<String, List<String>> getOperations() {
-        if (operations == null) {
-            return Collections.emptyMap();
-        }
-        return operations;
+    public List<StaticHeader> getStaticHeaders() {
+        return staticHeaders == null ? List.of() : staticHeaders;
     }
 
-    public void setOperations(Map<String, List<String>> operations) {
+    public void setStaticHeaders(List<StaticHeader> staticHeaders) {
+        this.staticHeaders = staticHeaders;
+    }
+
+    public List<String> getDynamicHeaders() {
+        return dynamicHeaders == null ? List.of() : dynamicHeaders;
+    }
+
+    public void setDynamicHeaders(List<String> dynamicHeaders) {
+        this.dynamicHeaders = dynamicHeaders;
+    }
+
+    public Map<String, OperationConfig> getOperations() {
+        return operations == null ? Collections.emptyMap() : operations;
+    }
+
+    public void setOperations(Map<String, OperationConfig> operations) {
         this.operations = operations;
     }
 
-    public List<String> getSeiAnnotations() {
-        if (sei == null || sei.getAnnotations() == null) {
-            return List.of();
+    public String resolveConfigKey(String fallbackPortTypeName) {
+        if (configKey != null && !configKey.isBlank()) {
+            return configKey;
         }
-        return sei.getAnnotations();
+        return fallbackPortTypeName;
     }
 
-    public static class Sei {
-        private List<String> annotations;
-
-        public List<String> getAnnotations() {
-            return annotations;
-        }
-
-        public void setAnnotations(List<String> annotations) {
-            this.annotations = annotations;
-        }
+    public String resolveOperationAction(String operationName) {
+        OperationConfig operationConfig = getOperations().get(operationName);
+        return operationConfig == null ? operationName : operationConfig.resolveAction(operationName);
     }
 }
-

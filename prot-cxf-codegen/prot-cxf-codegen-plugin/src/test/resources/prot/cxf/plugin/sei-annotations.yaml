@@ -1,4 +1,8 @@
-sei:
-  annotations:
-    - com.example.CustomAnnotation
+x-config-key: customClient
+x-static-headers:
+  - name: X-Tenant
+    value: demo
+    ifExisting: true
+x-dynamic-headers:
+  - com.example.CustomHeaderProvider
 

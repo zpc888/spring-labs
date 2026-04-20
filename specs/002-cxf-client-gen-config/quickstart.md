@@ -25,16 +25,21 @@ Add SnakeYAML to your pom.xml:
 Create a `client-gen-config.yaml` file:
 
 ```yaml
-sei:
-  annotations:
-    - javax.xml.ws.WebService
-    - com.example.CustomSEI
+configKey: pingClient
+
+staticHeaders:
+  - name: X-Tenant
+    value: demo
+    ifExisting: true
+
+dynamicHeaders:
+  - com.example.soap.header.AuthHeaderProvider
 
 operations:
   ping:
-    - com.example.PingHandler
+    action: pingAction
   echo:
-    - com.example.EchoHandler
+    action: ""
 ```
 
 ### 3. Use with Maven
@@ -76,7 +81,10 @@ In your pom.xml, configure the CXF codegen plugin:
 mvn generate-sources
 ```
 
-The generated SEI interface will include your custom annotations.
+The generated SEI interface will include:
+- mandatory `@a.b.RegisteredSoapClient("...")`
+- optional `@a.b2.StaticHeaders` / `@a.b2.DynamicHeaders`
+- mandatory method-level `@a.b3.SoapAction("...")`
 
 ## Configuration File Locations
 
@@ -96,15 +104,12 @@ See `prot-cxf-codegen/prot-cxf-codegen-soap-client/src/main/resources/client-gen
 ### Example: Multiple Operations
 
 ```yaml
-sei:
-  annotations:
-    - javax.xml.ws.WebService
+configKey: bookClient
 operations:
   ping:
-    - com.example.PingHandler
+    action: pingAction
   addBook:
-    - com.example.AddBookHandler
-    - jakarta.jws.WebMethod
+    action: ""
 ```
 
 ## Building the Plugin

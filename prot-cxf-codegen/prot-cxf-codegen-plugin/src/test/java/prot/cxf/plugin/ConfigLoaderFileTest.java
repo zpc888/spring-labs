@@ -16,21 +16,38 @@ class ConfigLoaderFileTest {
 
     @Test
     void loadFromFilePath_returnsParsedConfig() throws IOException {
-        String yamlContent = "sei:\n  annotations:\n    - com.example.CustomAnnotation\n";
+        String yamlContent = """
+                x-config-key: pingClient
+                x-static-headers:
+                  - name: X-Tenant
+                    value: demo
+                    ifExisting: true
+                x-dynamic-headers:
+                  - com.example.HeaderProvider
+                """;
         Path yamlFile = tempDir.resolve("test-sei-annotations.yaml");
         Files.writeString(yamlFile, yamlContent);
 
         ClientGenConfig config = ConfigLoader.load(yamlFile.toAbsolutePath().toString());
 
         assertNotNull(config, "Config should not be null");
-        assertNotNull(config.getSeiAnnotations(), "SEI annotations should not be null");
-        assertTrue(config.getSeiAnnotations().contains("com.example.CustomAnnotation"),
-                "Should contain 'com.example.CustomAnnotation'");
+        assertEquals("pingClient", config.getConfigKey());
+        assertEquals(1, config.getStaticHeaders().size());
+        assertEquals("X-Tenant", config.getStaticHeaders().get(0).getName());
+        assertEquals("demo", config.getStaticHeaders().get(0).getValue());
+        assertEquals(Boolean.TRUE, config.getStaticHeaders().get(0).getIfExisting());
+        assertEquals(java.util.List.of("com.example.HeaderProvider"), config.getDynamicHeaders());
     }
 
     @Test
     void loadFromFilePath_withOperations() throws IOException {
-        String yamlContent = "operations:\n  ping:\n    - com.example.PingHandler\n";
+        String yamlContent = """
+                x-operations:
+                  ping:
+                    action: pingAction
+                  echo:
+                    action: ""
+                """;
         Path yamlFile = tempDir.resolve("test-operation-annotations.yaml");
         Files.writeString(yamlFile, yamlContent);
 
@@ -39,7 +56,7 @@ class ConfigLoaderFileTest {
         assertNotNull(config);
         assertNotNull(config.getOperations());
         assertTrue(config.getOperations().containsKey("ping"));
-        assertTrue(config.getOperations().get("ping").contains("com.example.PingHandler"));
+        assertEquals("pingAction", config.getOperations().get("ping").getAction());
+        assertEquals("echo", config.resolveOperationAction("echo"));
     }
 }
-

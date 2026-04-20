@@ -13,8 +13,10 @@ class ConfigLoaderClasspathTest {
         ClientGenConfig config = ConfigLoader.load("prot/cxf/plugin/sei-annotations.yaml");
 
         assertNotNull(config, "Config should not be null when loaded from classpath");
-        assertNotNull(config.getSeiAnnotations());
-        assertEquals(java.util.List.of("com.example.CustomAnnotation"), config.getSeiAnnotations());
+        assertEquals("customClient", config.getConfigKey());
+        assertEquals(1, config.getStaticHeaders().size());
+        assertEquals("X-Tenant", config.getStaticHeaders().get(0).getName());
+        assertEquals(java.util.List.of("com.example.CustomHeaderProvider"), config.getDynamicHeaders());
     }
 
     @Test
@@ -23,7 +25,6 @@ class ConfigLoaderClasspathTest {
 
         assertNotNull(config);
         assertTrue(config.getOperations().containsKey("ping"));
-        assertTrue(config.getOperations().get("ping").contains("com.example.PingHandler"));
+        assertEquals("pingAction", config.resolveOperationAction("ping"));
     }
 }
-

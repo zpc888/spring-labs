@@ -15,7 +15,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Tests that the prot-cxf-sei.vm template correctly emits per-operation annotations (FR-015).
+ * Tests that the prot-cxf-sei.vm template emits mandatory per-operation SoapAction annotations.
  */
 class CustomSEIGeneratorOperationAnnotationTest {
 
@@ -37,46 +37,49 @@ class CustomSEIGeneratorOperationAnnotationTest {
         );
 
         VelocityContext ctx = buildContext(methods);
-        ctx.put("customSeiAnnotations", Collections.emptyList());
-        ctx.put("customOperationAnnotations", Map.of("ping", List.of("com.example.PingHandler")));
+        ctx.put("customConfigKey", "client");
+        ctx.put("customStaticHeaders", List.of());
+        ctx.put("customDynamicHeaders", List.of());
+        OperationConfig operationConfig = new OperationConfig();
+        operationConfig.setAction("customPingAction");
+        ctx.put("customOperationConfigs", Map.of("ping", operationConfig));
 
         String rendered = render(ctx);
 
-        assertTrue(rendered.contains("@com.example.PingHandler"),
-                "Rendered output should contain @com.example.PingHandler:\n" + rendered);
+        assertTrue(rendered.contains("@prot.soap.SoapAction(\"customPingAction\")"),
+                "Rendered output should contain configured ping SoapAction:\n" + rendered);
+        assertTrue(rendered.contains("@prot.soap.SoapAction(\"echo\")"),
+                "Rendered output should contain fallback echo SoapAction:\n" + rendered);
 
-        // Find @com.example.PingHandler position and check it's near "ping" not "echo"
-        int annotIdx = rendered.indexOf("@com.example.PingHandler");
+        int annotIdx = rendered.indexOf("@prot.soap.SoapAction(\"customPingAction\")");
         int pingIdx = rendered.indexOf("public void ping(");
-        int echoIdx = rendered.indexOf("public void echo(");
 
         assertTrue(pingIdx >= 0, "Should contain ping method");
-        assertTrue(echoIdx >= 0, "Should contain echo method");
-        // Annotation should come before ping method signature
         assertTrue(annotIdx < pingIdx,
-                "@com.example.PingHandler should appear before ping method declaration");
-        // Annotation should NOT appear after echo or in echo's section
-        // Check there's no second occurrence of the annotation after echo
-        int secondAnnotIdx = rendered.indexOf("@com.example.PingHandler", annotIdx + 1);
-        assertTrue(secondAnnotIdx < 0 || secondAnnotIdx < echoIdx,
-                "@com.example.PingHandler should not appear in echo's section");
+                "Configured SoapAction should appear before ping method declaration");
     }
 
     @Test
-    void template_noOperationAnnotations_noneEmitted() throws Exception {
+    void template_blankOperationAction_usesMethodNameFallback() throws Exception {
         List<CustomSEIGeneratorSeiAnnotationTest.StubMethod> methods = List.of(
                 new CustomSEIGeneratorSeiAnnotationTest.StubMethod("ping"),
                 new CustomSEIGeneratorSeiAnnotationTest.StubMethod("echo")
         );
 
         VelocityContext ctx = buildContext(methods);
-        ctx.put("customSeiAnnotations", Collections.emptyList());
-        ctx.put("customOperationAnnotations", Map.of());
+        ctx.put("customConfigKey", "client");
+        ctx.put("customStaticHeaders", List.of());
+        ctx.put("customDynamicHeaders", List.of());
+        OperationConfig operationConfig = new OperationConfig();
+        operationConfig.setAction("   ");
+        ctx.put("customOperationConfigs", Map.of("ping", operationConfig));
 
         String rendered = render(ctx);
 
-        assertFalse(rendered.contains("@com.example.PingHandler"),
-                "No PingHandler annotation should appear when operation map is empty");
+        assertTrue(rendered.contains("@prot.soap.SoapAction(\"ping\")"),
+                "Blank configured action should fallback to method name");
+        assertTrue(rendered.contains("@prot.soap.SoapAction(\"echo\")"),
+                "Unconfigured operation should fallback to method name");
     }
 
     private VelocityContext buildContext(List<CustomSEIGeneratorSeiAnnotationTest.StubMethod> methods) {

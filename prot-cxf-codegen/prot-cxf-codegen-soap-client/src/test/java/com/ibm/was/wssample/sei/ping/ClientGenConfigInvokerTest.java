@@ -17,8 +17,8 @@ class ClientGenConfigInvokerTest {
         assertTrue(Files.exists(generatedSei), "Expected generated SEI source to exist");
         String source = readString(generatedSei);
 
-        assertTrue(source.contains("@com.ibm.was.wssample.sei.ping.annotations.GeneratedSei"));
-        assertTrue(source.contains("@com.ibm.was.wssample.sei.ping.annotations.GeneratedOperation"));
+        assertTrue(source.contains("@prot.soap.RegisteredSoapClient"));
+        assertTrue(source.contains("@prot.soap.SoapAction"));
     }
 
     private static String readString(Path path) throws IOException {

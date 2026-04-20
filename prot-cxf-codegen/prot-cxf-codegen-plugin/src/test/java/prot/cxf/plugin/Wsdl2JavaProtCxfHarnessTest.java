@@ -11,6 +11,8 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.Comparator;
 import java.util.stream.Stream;
 
 class Wsdl2JavaProtCxfHarnessTest {
@@ -22,40 +24,72 @@ class Wsdl2JavaProtCxfHarnessTest {
     void configA_addsExpectedCustomAnnotations() throws Exception {
         Path scenarioDir = copyFixtureProject("scenario-a");
 
-        runWsdlToJava(scenarioDir, true);
-        String source = readGeneratedSeiSource(scenarioDir);
+        runWsdlToJava(scenarioDir, "ping.wsdl", true);
+        String source = readGeneratedSeiSource(scenarioDir, "PingServicePortType.java");
 
-        Assertions.assertTrue(source.contains("@com.example.ConfigASei"));
-        Assertions.assertTrue(source.contains("@com.example.ConfigAOperation"));
+        Assertions.assertTrue(source.contains("@prot.soap.RegisteredSoapClient(\"pingClientA\")"));
+        Assertions.assertTrue(source.contains("@prot.soap.StaticHeaders"));
+        Assertions.assertTrue(source.contains("@prot.soap.DynamicHeaders"));
+        Assertions.assertTrue(source.contains("@prot.soap.SoapAction(\"PingActionA\")"));
     }
 
     @Test
     void configB_addsDifferentCustomAnnotations() throws Exception {
         Path scenarioDir = copyFixtureProject("scenario-b");
 
-        runWsdlToJava(scenarioDir, true);
-        String source = readGeneratedSeiSource(scenarioDir);
+        runWsdlToJava(scenarioDir, "ping.wsdl", true);
+        String source = readGeneratedSeiSource(scenarioDir, "PingServicePortType.java");
 
-        Assertions.assertTrue(source.contains("@com.example.ConfigBSei"));
-        Assertions.assertTrue(source.contains("@com.example.ConfigBOperation"));
-        Assertions.assertFalse(source.contains("@com.example.ConfigASei"));
-        Assertions.assertFalse(source.contains("@com.example.ConfigAOperation"));
+        Assertions.assertTrue(source.contains("@prot.soap.RegisteredSoapClient(\"pingClientB\")"));
+        Assertions.assertFalse(source.contains("@prot.soap.StaticHeaders"));
+        Assertions.assertFalse(source.contains("@prot.soap.DynamicHeaders"));
+        Assertions.assertTrue(source.contains("@prot.soap.SoapAction(\"pingOperation\")"));
     }
 
     @Test
     void noClientGenConfig_keepsBaselineWithoutCustomAnnotations() throws Exception {
         Path scenarioDir = copyFixtureProject("scenario-no-config");
 
-        runWsdlToJava(scenarioDir, false);
-        String source = readGeneratedSeiSource(scenarioDir);
+        runWsdlToJava(scenarioDir, "ping.wsdl", false);
+        String source = readGeneratedSeiSource(scenarioDir, "PingServicePortType.java");
 
-        Assertions.assertFalse(source.contains("@com.example.ConfigASei"));
-        Assertions.assertFalse(source.contains("@com.example.ConfigBSei"));
-        Assertions.assertFalse(source.contains("@com.example.ConfigAOperation"));
-        Assertions.assertFalse(source.contains("@com.example.ConfigBOperation"));
+        Assertions.assertTrue(source.contains("@prot.soap.RegisteredSoapClient(\"PingServicePortType\")"));
+        Assertions.assertTrue(source.contains("@prot.soap.SoapAction(\"pingOperation\")"));
+        Assertions.assertFalse(source.contains("@prot.soap.StaticHeaders"));
+        Assertions.assertFalse(source.contains("@prot.soap.DynamicHeaders"));
     }
 
-    private void runWsdlToJava(Path scenarioDir, boolean withClientGenConfig) throws Exception {
+    @Test
+    void calculatorConfigA_supportsConfiguredAndFallbackActionsWithHeaders() throws Exception {
+        Path scenarioDir = copyFixtureProject("scenario-calculator-a");
+
+        runWsdlToJava(scenarioDir, "calculator.wsdl", true);
+        String source = readGeneratedSeiSource(scenarioDir, "CalculatorPortType.java");
+
+        Assertions.assertTrue(source.contains("@prot.soap.RegisteredSoapClient(\"calculatorClientA\")"));
+        Assertions.assertTrue(source.contains("@prot.soap.StaticHeaders"));
+        Assertions.assertTrue(source.contains("@prot.soap.DynamicHeaders"));
+        Assertions.assertTrue(source.contains("@prot.soap.SoapAction(\"AddConfiguredAction\")"));
+        Assertions.assertTrue(containsAnySoapAction(source, "Divide", "divide"));
+        Assertions.assertTrue(containsAnySoapAction(source, "Subtract", "subtract"));
+        Assertions.assertTrue(containsAnySoapAction(source, "Multiply", "multiply"));
+    }
+
+    @Test
+    void calculatorConfigB_emitsMandatoryAnnotationsWithoutOptionalHeaders() throws Exception {
+        Path scenarioDir = copyFixtureProject("scenario-calculator-b");
+
+        runWsdlToJava(scenarioDir, "calculator.wsdl", true);
+        String source = readGeneratedSeiSource(scenarioDir, "CalculatorPortType.java");
+
+        Assertions.assertTrue(source.contains("@prot.soap.RegisteredSoapClient(\"calculatorClientB\")"));
+        Assertions.assertFalse(source.contains("@prot.soap.StaticHeaders"));
+        Assertions.assertFalse(source.contains("@prot.soap.DynamicHeaders"));
+        Assertions.assertTrue(source.contains("@prot.soap.SoapAction(\"AddActionB\")"));
+        Assertions.assertTrue(containsAnySoapAction(source, "Divide", "divide"));
+    }
+
+    private void runWsdlToJava(Path scenarioDir, String wsdlName, boolean withClientGenConfig) throws Exception {
         MavenProjectStub project = new MavenProjectStub();
         Build build = new Build();
         build.setDirectory(scenarioDir.resolve("target").toString());
@@ -63,7 +97,7 @@ class Wsdl2JavaProtCxfHarnessTest {
         Assertions.assertNotNull(project.getBuild().getDirectory());
 
         Path outputDir = Path.of(project.getBuild().getDirectory(), "generated-sources");
-        Path wsdl = scenarioDir.resolve("../../backend/soap/ping.wsdl").normalize();
+        Path wsdl = scenarioDir.resolve("../../backend/soap/" + wsdlName).normalize();
 
         String[] args;
         if (withClientGenConfig) {
@@ -85,8 +119,9 @@ class Wsdl2JavaProtCxfHarnessTest {
         new WSDLToJava(args).run(new ToolContext());
     }
 
-    private String readGeneratedSeiSource(Path scenarioDir) throws IOException {
-        Path sei = scenarioDir.resolve("target/generated-sources/com/ibm/was/wssample/sei/ping/PingServicePortType.java");
+    private String readGeneratedSeiSource(Path scenarioDir, String fileName) throws IOException {
+        Path generatedSources = scenarioDir.resolve("target/generated-sources");
+        Path sei = findFileByName(generatedSources, fileName);
         Assertions.assertTrue(Files.exists(sei), "Expected generated SEI source to exist: " + sei);
         return Files.readString(sei);
     }
@@ -108,7 +143,7 @@ class Wsdl2JavaProtCxfHarnessTest {
                         Files.createDirectories(destination);
                     } else {
                         Files.createDirectories(destination.getParent());
-                        Files.copy(path, destination);
+                        Files.copy(path, destination, StandardCopyOption.REPLACE_EXISTING);
                     }
                 } catch (IOException ex) {
                     throw new RuntimeException(ex);
@@ -120,5 +155,25 @@ class Wsdl2JavaProtCxfHarnessTest {
             }
             throw ex;
         }
+    }
+
+    private static Path findFileByName(Path root, String fileName) throws IOException {
+        try (Stream<Path> stream = Files.walk(root)) {
+            return stream
+                    .filter(Files::isRegularFile)
+                    .filter(path -> path.getFileName().toString().equals(fileName))
+                    .sorted(Comparator.comparing(Path::toString))
+                    .findFirst()
+                    .orElseThrow(() -> new IOException("Expected generated file not found: " + fileName));
+        }
+    }
+
+    private static boolean containsAnySoapAction(String source, String... actionValues) {
+        for (String actionValue : actionValues) {
+            if (source.contains("@prot.soap.SoapAction(\"" + actionValue + "\")")) {
+                return true;
+            }
+        }
+        return false;
     }
 }

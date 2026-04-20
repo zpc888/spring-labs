@@ -1,4 +1,4 @@
-operations:
+x-operations:
   ping:
-    - com.example.PingHandler
+    action: pingAction
 

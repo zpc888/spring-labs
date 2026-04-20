@@ -9,6 +9,7 @@ import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -35,25 +36,67 @@ public class CustomSEIGenerator extends SEIGenerator {
 
         if (templateName.endsWith("/sei.vm")) {
             templateName = "prot-cxf-sei.vm";
-            setAttributes("customSeiAnnotations", getCustomSeiAnnotations());
-            setAttributes("customOperationAnnotations", getCustomOperationAnnotations());
+            setAttributes("customConfigKey", getConfigKey());
+            setAttributes("customStaticHeaders", getStaticHeaders());
+            setAttributes("customDynamicHeaders", getDynamicHeaders());
+            setAttributes("customOperationConfigs", getOperationConfigs());
         }
 
         super.doWrite(templateName, outputs);
     }
 
-    private List<String> getCustomSeiAnnotations() {
+    private String getConfigKey() {
+        if (clientGenConfig == null) {
+            return null;
+        }
+        return clientGenConfig.getConfigKey();
+    }
+
+    private List<StaticHeader> getStaticHeaders() {
         if (clientGenConfig == null) {
             return Collections.emptyList();
         }
-        return clientGenConfig.getSeiAnnotations();
+        return clientGenConfig.getStaticHeaders();
     }
 
-    private Map<String, List<String>> getCustomOperationAnnotations() {
+    private List<String> getDynamicHeaders() {
+        if (clientGenConfig == null) {
+            return Collections.emptyList();
+        }
+        return clientGenConfig.getDynamicHeaders();
+    }
+
+    private Map<String, OperationConfig> getOperationConfigs() {
         if (clientGenConfig == null) {
             return Collections.emptyMap();
         }
-        return clientGenConfig.getOperations();
+        Map<String, OperationConfig> configured = clientGenConfig.getOperations();
+        Map<String, OperationConfig> normalized = new HashMap<>(configured);
+        configured.forEach((name, config) -> {
+            normalized.putIfAbsent(decapitalize(name), config);
+            normalized.putIfAbsent(capitalize(name), config);
+        });
+        return normalized;
+    }
+
+    private String decapitalize(String value) {
+        if (value == null || value.isBlank()) {
+            return value;
+        }
+        if (value.length() == 1) {
+            return value.toLowerCase();
+        }
+        return Character.toLowerCase(value.charAt(0)) + value.substring(1);
+    }
+
+    private String capitalize(String value) {
+        if (value == null || value.isBlank()) {
+            return value;
+        }
+        if (value.length() == 1) {
+            return value.toUpperCase();
+        }
+        return Character.toUpperCase(value.charAt(0)) + value.substring(1);
     }
 
     private String resolveClientGenConfigLocation(ToolContext context) {

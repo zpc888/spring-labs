@@ -27,16 +27,10 @@ class ConfigLoaderErrorTest {
 
     @Test
     void load_missingFile_throwsToolException() {
-        // ToolException is a RuntimeException, so the inner "Unable to find" throw is
-        // caught by the outer RuntimeException handler and re-wrapped as "Invalid YAML".
-        // Verify that a ToolException is thrown and the cause chain contains "Unable to find".
         ToolException ex = assertThrows(ToolException.class,
                 () -> ConfigLoader.load("no-such-file.yaml"));
-        // The outer message is "Invalid YAML ...", the cause carries "Unable to find ..."
-        Throwable cause = ex.getCause();
-        assertNotNull(cause, "ToolException should have a cause for missing file");
-        assertTrue(cause.getMessage().contains("Unable to find"),
-                "Cause should contain 'Unable to find' in: " + cause.getMessage());
+        assertTrue(ex.getMessage().contains("Unable to find"),
+                "Expected missing-file message, got: " + ex.getMessage());
     }
 
     @Test
@@ -49,5 +43,25 @@ class ConfigLoaderErrorTest {
         assertTrue(ex.getMessage().contains("Invalid YAML"),
                 "Expected 'Invalid YAML' in: " + ex.getMessage());
     }
-}
 
+    @Test
+    void load_invalidOpertionsKey_throwsToolExceptionWithCanonicalHint() throws IOException {
+        Path yaml = tempDir.resolve("invalid-opertions.yaml");
+        Files.writeString(yaml, "opertions:\n  ping:\n    action: pingAction\n");
+
+        ToolException ex = assertThrows(ToolException.class,
+                () -> ConfigLoader.load(yaml.toAbsolutePath().toString()));
+        assertTrue(ex.getMessage().contains("opertions"));
+        assertTrue(ex.getMessage().contains("x-operations"));
+    }
+
+    @Test
+    void load_invalidDynamicHeader_throwsToolException() throws IOException {
+        Path yaml = tempDir.resolve("invalid-dynamic-header.yaml");
+        Files.writeString(yaml, "x-dynamic-headers:\n  - NotAQualifiedName\n");
+
+        ToolException ex = assertThrows(ToolException.class,
+                () -> ConfigLoader.load(yaml.toAbsolutePath().toString()));
+        assertTrue(ex.getMessage().contains("dynamicHeaders"));
+    }
+}

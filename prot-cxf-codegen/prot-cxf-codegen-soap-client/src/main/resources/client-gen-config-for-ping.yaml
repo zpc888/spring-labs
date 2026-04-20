@@ -1,5 +1,5 @@
 x-config-key: pingClientB
-x-operations:
+operations:
   pingOperation:
     action: ""
 
