@@ -17,6 +17,10 @@
 # Logs
 **/*.log
 
+# Java artifacts
+**/*.class
+**/*.jar
+
 # OS
 **/.DS_Store
 **/Thumbs.db
@@ -24,6 +28,10 @@
 # Temp
 **/*.tmp
 **/*.bak
+**/*.swp
+
+# Env
+**/.env*
 
 **/bin/
 **/.factorypath

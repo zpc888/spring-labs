@@ -1,0 +1,11 @@
+x-config-key: pingClientA
+x-static-headers:
+  - name: X-Tenant
+    value: tenant-a
+    ifExisting: true
+x-dynamic-headers:
+  - com.example.headers.DynamicA
+x-operations:
+  pingOperation:
+    action: PingActionA
+

@@ -1,0 +1,7 @@
+x-config-key: calculatorClientB
+operations:
+  Add:
+    action: AddActionB
+  Divide:
+    action: DivideActionB
+

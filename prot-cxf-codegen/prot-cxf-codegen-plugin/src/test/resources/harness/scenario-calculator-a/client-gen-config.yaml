@@ -1,0 +1,12 @@
+x-config-key: calculatorClientA
+x-static-headers:
+  - name: X-Calc-Mode
+    value: scenario-a
+x-dynamic-headers:
+  - com.example.headers.CalculatorDynamicHeader
+x-operations:
+  Add:
+    action: AddConfiguredAction
+  Divide:
+    action: ""
+

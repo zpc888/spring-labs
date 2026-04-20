@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<plugin xmlns="http://cxf.apache.org/tools/plugin" name="play" version="" provider="play.typesafe.com">
+    <frontend name="prot-cxf" package="org.apache.cxf.tools.wsdlto.frontend.jaxws" profile="JAXWSProfile">
+        <container name="JAXWSContainer" package="org.apache.cxf.tools.wsdlto.frontend.jaxws" toolspec="prot-cxf-toolspec.xml"/>
+        <processor name="WSDLToJavaProcessor" package="org.apache.cxf.tools.wsdlto.frontend.jaxws.processor"/>
+        <builder name="JAXWSDefinitionBuilder" package="org.apache.cxf.tools.wsdlto.frontend.jaxws.wsdl11"/>
+        <generators package="prot.cxf.plugin">
+            <generator name="CustomSEIGenerator"/>
+        </generators>
+    </frontend>
+</plugin>

@@ -1,0 +1,7 @@
+configKey: calculatorClientB
+operations:
+  Add:
+    action: AddActionB
+  Divide:
+    action: DivideActionB
+

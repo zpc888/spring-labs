@@ -15,3 +15,5 @@ rootProject.name = 'spring-labs'
 include 'z-spring-bean-lifecycle'
 includeBuild 'z-spring-gateway'
 include 'z-spring-method-argument-resolver'
+
+includeBuild 'prot-cxf-codegen'
