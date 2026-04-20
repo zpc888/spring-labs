@@ -38,6 +38,12 @@
             <version>5.10.2</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>jakarta.xml.ws</groupId>
+            <artifactId>jakarta.xml.ws-api</artifactId>
+            <version>4.0.3</version>
+            <scope>compile</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -107,6 +113,7 @@
                                 <wsdlOption>
                                     <wsdl>${basedir}/src/main/resources/calculator.wsdl</wsdl>
                                     <extraargs>
+                                        <extraarg>-client</extraarg>
                                         <extraarg>-exsh</extraarg>
                                         <extraarg>true</extraarg>
                                         <extraarg>-p</extraarg>
@@ -115,6 +122,29 @@
                                         <extraarg>prot-cxf</extraarg>
                                         <extraarg>-clientGenConfig</extraarg>
                                         <extraarg>${basedir}/src/main/resources/client-gen-config.yaml</extraarg>
+                                    </extraargs>
+                                </wsdlOption>
+                            </wsdlOptions>
+                        </configuration>
+
+                    </execution>
+                    <execution>
+                        <id>generate-sources-default</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>wsdl2java</goal>
+                        </goals>
+                        <configuration>
+                            <sourceRoot>${project.build.directory}/generated-sources/</sourceRoot>
+                            <wsdlOptions>
+                                <wsdlOption>
+                                    <wsdl>${basedir}/src/main/resources/calculator.wsdl</wsdl>
+                                    <extraargs>
+                                        <extraarg>-p</extraarg>
+                                        <extraarg>com.prot.calc.dft</extraarg>
+                                        <!-- frontend won't generate client stub, comment out the below 2 lines, it will generate stub class -->
+                                        <extraarg>-fe</extraarg>
+                                        <extraarg>prot-cxf</extraarg>
                                     </extraargs>
                                 </wsdlOption>
                             </wsdlOptions>

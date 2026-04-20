@@ -9,30 +9,7 @@
     <!-- 1. TYPES: Define the data structures -->
     <wsdl:types>
         <xsd:schema targetNamespace="http://example.com/calc">
-            <!-- Header element -->
-            <xsd:element name="AuthHeader">
-                <xsd:complexType>
-                    <xsd:sequence>
-                        <xsd:element name="ApiKey" type="xsd:string"/>
-                    </xsd:sequence>
-                </xsd:complexType>
-            </xsd:element>
-            <!-- named types -->
-            <xsd:complexType name="BiOpRequestType">
-                <xsd:sequence>
-                    <xsd:element name="a" type="xsd:int"/>
-                    <xsd:element name="b" type="xsd:int"/>
-                </xsd:sequence>
-            </xsd:complexType>
-            <xsd:complexType name="SingleResultType">
-                <xsd:sequence>
-                    <xsd:element name="result" type="xsd:int"/>
-                </xsd:sequence>
-            </xsd:complexType>
-            <xsd:element name="AddRequest" type="tns:BiOpRequestType"/>
-            <xsd:element name="AddResponse" type="tns:SingleResultType"/>
-            <xsd:element name="SubtractRequest" type="tns:BiOpRequestType"/>
-            <xsd:element name="SubtractResponse" type="tns:SingleResultType"/>
+            <xsd:import namespace="http://example.com/calc" schemaLocation="calculator.xsd"/>
         </xsd:schema>
     </wsdl:types>
 
@@ -52,6 +29,18 @@
     <wsdl:message name="SubtractOutput">
         <wsdl:part name="parameters" element="tns:SubtractResponse"/>
     </wsdl:message>
+    <wsdl:message name="MultiplyInput">
+        <wsdl:part name="parameters" element="tns:MultiplyRequest"/>
+    </wsdl:message>
+    <wsdl:message name="MultiplyOutput">
+        <wsdl:part name="parameters" element="tns:MultiplyResponse"/>
+    </wsdl:message>
+    <wsdl:message name="DivideInput">
+        <wsdl:part name="parameters" element="tns:DivideRequest"/>
+    </wsdl:message>
+    <wsdl:message name="DivideOutput">
+        <wsdl:part name="parameters" element="tns:DivideResponse"/>
+    </wsdl:message>
 
     <!-- 3. PORT TYPE: Abstract operations -->
     <wsdl:portType name="CalculatorPortType">
@@ -62,6 +51,14 @@
         <wsdl:operation name="Subtract">
             <wsdl:input message="tns:SubtractInput"/>
             <wsdl:output message="tns:SubtractOutput"/>
+        </wsdl:operation>
+        <wsdl:operation name="Multiply">
+            <wsdl:input message="tns:MultiplyInput"/>
+            <wsdl:output message="tns:MultiplyOutput"/>
+        </wsdl:operation>
+        <wsdl:operation name="Divide">
+            <wsdl:input message="tns:DivideInput"/>
+            <wsdl:output message="tns:DivideOutput"/>
         </wsdl:operation>
     </wsdl:portType>
 
@@ -83,6 +80,28 @@
 
         <wsdl:operation name="Subtract">
             <soap:operation soapAction="http://example.com/calc/Subtract"/>
+            <wsdl:input>
+                <soap:header message="tns:HeaderMessage" part="header" use="literal"/>
+                <soap:body use="literal"/>
+            </wsdl:input>
+            <wsdl:output>
+                <soap:body use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+
+        <wsdl:operation name="Multiply">
+            <soap:operation soapAction="http://example.com/calc/Multiply"/>
+            <wsdl:input>
+                <soap:header message="tns:HeaderMessage" part="header" use="literal"/>
+                <soap:body use="literal"/>
+            </wsdl:input>
+            <wsdl:output>
+                <soap:body use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+
+        <wsdl:operation name="Divide">
+            <soap:operation soapAction="http://example.com/calc/Divide"/>
             <wsdl:input>
                 <soap:header message="tns:HeaderMessage" part="header" use="literal"/>
                 <soap:body use="literal"/>
