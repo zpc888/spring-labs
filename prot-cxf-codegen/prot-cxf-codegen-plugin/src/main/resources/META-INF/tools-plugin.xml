@@ -5,7 +5,19 @@
         <processor name="WSDLToJavaProcessor" package="org.apache.cxf.tools.wsdlto.frontend.jaxws.processor"/>
         <builder name="JAXWSDefinitionBuilder" package="org.apache.cxf.tools.wsdlto.frontend.jaxws.wsdl11"/>
         <generators package="prot.cxf.plugin">
+            <generator name="FaultGenerator"/>
+            <generator name="ServiceGenerator"/>
             <generator name="CustomSEIGenerator"/>
+            <!--
+            generator list:
+                SEIGenerator: Generates the Service Endpoint Interface (SEI)—the Java interface representing the WSDL portType.
+                ServiceGenerator: Generates the Service class (which extends javax.xml.ws.Service), used by clients to look up ports.
+                ClientGenerator: Generates a sample client main class to show how to invoke the web service.
+                ServerGenerator: Generates a sample server main class to show how to publish/start the service.
+                ImplGenerator: Generates a skeleton implementation class (impl) for the SEI.
+                FaultGenerator: Generates Java exception classes (@WebFault) for WSDL fault messages.
+                AntGenerator: Generates sample build.xml files for Apache Ant to compile and run the generated code.
+            -->
         </generators>
     </frontend>
 </plugin>

@@ -27,6 +27,20 @@
         </xsd:sequence>
     </xsd:complexType>
 
+    <xsd:complexType name="OverflowFault">
+        <xsd:sequence>
+            <xsd:element name="code" type="xsd:string"/>
+            <xsd:element name="message" type="xsd:string"/>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="DivideByZeroFault">
+        <xsd:sequence>
+            <xsd:element name="code" type="xsd:string"/>
+            <xsd:element name="message" type="xsd:string"/>
+        </xsd:sequence>
+    </xsd:complexType>
+
     <xsd:element name="AddRequest" type="tns:BiOpRequestType"/>
     <xsd:element name="AddResponse" type="tns:SingleResultType"/>
     <xsd:element name="SubtractRequest" type="tns:BiOpRequestType"/>
@@ -35,5 +49,7 @@
     <xsd:element name="MultiplyResponse" type="tns:SingleResultType"/>
     <xsd:element name="DivideRequest" type="tns:BiOpRequestType"/>
     <xsd:element name="DivideResponse" type="tns:SingleResultType"/>
+    <xsd:element name="OverflowFault" type="tns:OverflowFault"/>
+    <xsd:element name="DivideByZeroFault" type="tns:DivideByZeroFault"/>
 </xsd:schema>
 

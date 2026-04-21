@@ -41,24 +41,34 @@
     <wsdl:message name="DivideOutput">
         <wsdl:part name="parameters" element="tns:DivideResponse"/>
     </wsdl:message>
+    <wsdl:message name="OverflowFault">
+        <wsdl:part name="fault" element="tns:OverflowFault"/>
+    </wsdl:message>
+    <wsdl:message name="DivideByZeroFault">
+        <wsdl:part name="fault" element="tns:DivideByZeroFault"/>
+    </wsdl:message>
 
     <!-- 3. PORT TYPE: Abstract operations -->
     <wsdl:portType name="CalculatorPortType">
         <wsdl:operation name="Add">
             <wsdl:input message="tns:AddInput"/>
             <wsdl:output message="tns:AddOutput"/>
+            <wsdl:fault name="OverflowFault" message="tns:OverflowFault"/>
         </wsdl:operation>
         <wsdl:operation name="Subtract">
             <wsdl:input message="tns:SubtractInput"/>
             <wsdl:output message="tns:SubtractOutput"/>
+            <wsdl:fault name="OverflowFault" message="tns:OverflowFault"/>
         </wsdl:operation>
         <wsdl:operation name="Multiply">
             <wsdl:input message="tns:MultiplyInput"/>
             <wsdl:output message="tns:MultiplyOutput"/>
+            <wsdl:fault name="OverflowFault" message="tns:OverflowFault"/>
         </wsdl:operation>
         <wsdl:operation name="Divide">
             <wsdl:input message="tns:DivideInput"/>
             <wsdl:output message="tns:DivideOutput"/>
+            <wsdl:fault name="DivideByZeroFault" message="tns:DivideByZeroFault"/>
         </wsdl:operation>
     </wsdl:portType>
 
@@ -76,6 +86,9 @@
             <wsdl:output>
                 <soap:body use="literal"/>
             </wsdl:output>
+            <wsdl:fault name="OverflowFault">
+                <soap:fault name="OverflowFault" use="literal"/>
+            </wsdl:fault>
         </wsdl:operation>
 
         <wsdl:operation name="Subtract">
@@ -87,6 +100,9 @@
             <wsdl:output>
                 <soap:body use="literal"/>
             </wsdl:output>
+            <wsdl:fault name="OverflowFault">
+                <soap:fault name="OverflowFault" use="literal"/>
+            </wsdl:fault>
         </wsdl:operation>
 
         <wsdl:operation name="Multiply">
@@ -98,6 +114,9 @@
             <wsdl:output>
                 <soap:body use="literal"/>
             </wsdl:output>
+            <wsdl:fault name="OverflowFault">
+                <soap:fault name="OverflowFault" use="literal"/>
+            </wsdl:fault>
         </wsdl:operation>
 
         <wsdl:operation name="Divide">
@@ -109,6 +128,9 @@
             <wsdl:output>
                 <soap:body use="literal"/>
             </wsdl:output>
+            <wsdl:fault name="DivideByZeroFault">
+                <soap:fault name="DivideByZeroFault" use="literal"/>
+            </wsdl:fault>
         </wsdl:operation>
     </wsdl:binding>
 

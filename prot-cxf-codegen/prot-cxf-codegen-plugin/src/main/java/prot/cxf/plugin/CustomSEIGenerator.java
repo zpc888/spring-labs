@@ -14,9 +14,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Just a sample custom generator which use custom velocity template to generate SEI
- *
- * @author Valeriy Molyakov
+ * use custom velocity template to wire the attributes provided by client-gen-config YAML spec file when generating SEI interface
  */
 public class CustomSEIGenerator extends SEIGenerator {
 
