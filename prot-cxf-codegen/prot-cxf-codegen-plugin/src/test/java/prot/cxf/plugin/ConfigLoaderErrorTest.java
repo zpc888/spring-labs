@@ -64,4 +64,24 @@ class ConfigLoaderErrorTest {
                 () -> ConfigLoader.load(yaml.toAbsolutePath().toString()));
         assertTrue(ex.getMessage().contains("dynamicHeaders"));
     }
+
+    @Test
+    void load_unsupportedTopLevelKey_throwsToolException() throws IOException {
+        Path yaml = tempDir.resolve("unsupported-key.yaml");
+        Files.writeString(yaml, "x-unsupported: true\n");
+
+        ToolException ex = assertThrows(ToolException.class,
+                () -> ConfigLoader.load(yaml.toAbsolutePath().toString()));
+        assertTrue(ex.getMessage().contains("Unsupported key"));
+    }
+
+    @Test
+    void load_invalidOperationDynamicHeader_throwsToolException() throws IOException {
+        Path yaml = tempDir.resolve("invalid-op-dynamic-header.yaml");
+        Files.writeString(yaml, "x-operations:\n  ping:\n    dynamic-headers:\n      - notQualified\n");
+
+        ToolException ex = assertThrows(ToolException.class,
+                () -> ConfigLoader.load(yaml.toAbsolutePath().toString()));
+        assertTrue(ex.getMessage().contains("operations.ping.dynamicHeaders"));
+    }
 }

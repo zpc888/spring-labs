@@ -1,7 +1,23 @@
-configKey: calculatorClientB
-operations:
+x-base-url: https://example.local/calc-a
+x-jaxb-context-paths:
+  - com.example.calc.a
+x-static-headers:
+  - "X-Calc-Mode=scenario-a"
+x-dynamic-headers:
+  - com.example.headers.CalculatorDynamicHeader
+x-operations:
   Add:
-    action: AddActionB
+    action: AddConfiguredAction
+    static-headers:
+      - "X-Calc-Op=add"
   Divide:
-    action: DivideActionB
-
+    action: ""
+    dynamic-headers:
+      - prot.soap.header.SoapHeaderAContributor
+  Subtract:
+    static-headers:
+      - "X-Calc-Op=minus"
+      - "X-Overflow=false"
+    dynamic-headers:
+      - prot.soap.header.SoapHeaderAContributor
+      - prot.soap.header.SoapHeaderBContributor

@@ -25,19 +25,25 @@ Add SnakeYAML to your pom.xml:
 Create a `client-gen-config.yaml` file:
 
 ```yaml
-configKey: pingClient
+x-config-key: pingClient
+x-base-url: https://localhost:8081/soap-simulator
+x-jaxb-context-paths:
+  - com.example.ping
 
-staticHeaders:
+x-static-headers:
   - name: X-Tenant
     value: demo
     ifExisting: true
 
-dynamicHeaders:
+x-dynamic-headers:
   - com.example.soap.header.AuthHeaderProvider
 
-operations:
+x-operations:
   ping:
     action: pingAction
+    static-headers:
+      - name: X-Op
+        value: ping
   echo:
     action: ""
 ```
@@ -82,9 +88,10 @@ mvn generate-sources
 ```
 
 The generated SEI interface will include:
-- mandatory `@a.b.RegisteredSoapClient("...")`
-- optional `@a.b2.StaticHeaders` / `@a.b2.DynamicHeaders`
-- mandatory method-level `@a.b3.SoapAction("...")`
+- mandatory `@prot.soap.SoapClient(value=...)` (fallback: portType name)
+- optional class-level `baseUrl`, `jaxbContextPaths`, `staticHeaders`, `dynamicHeaders`
+- mandatory method-level `@prot.soap.SoapAction("...")` (fallback: configured action → WSDL soapAction → operation name)
+- conditional method-level `@prot.soap.SoapMethodHeader(...)`
 
 ## Configuration File Locations
 
@@ -104,13 +111,18 @@ See `prot-cxf-codegen/prot-cxf-codegen-soap-client/src/main/resources/client-gen
 ### Example: Multiple Operations
 
 ```yaml
-configKey: bookClient
-operations:
+x-config-key: bookClient
+x-operations:
   ping:
     action: pingAction
   addBook:
     action: ""
 ```
+
+## Accepted Aliases
+
+- `baseUrl`, `baseurl`, `base-url` map to canonical `x-base-url`
+- `jaxbContextPaths`, `jaxb-context-paths`, `jaxbcontextpaths` map to canonical `x-jaxb-context-paths`
 
 ## Building the Plugin
 

@@ -17,7 +17,7 @@ class ClientGenConfigInvokerTest {
         assertTrue(Files.exists(generatedSei), "Expected generated SEI source to exist");
         String source = readString(generatedSei);
 
-        assertTrue(source.contains("@prot.soap.RegisteredSoapClient"));
+        assertTrue(source.contains("@prot.soap.SoapClient"));
         assertTrue(source.contains("@prot.soap.SoapAction"));
     }
 

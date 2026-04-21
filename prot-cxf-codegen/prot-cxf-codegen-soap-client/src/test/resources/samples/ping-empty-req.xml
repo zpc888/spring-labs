@@ -1,0 +1,12 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ping="http://example.com">
+    <soapenv:Header/>
+    <soapenv:Body>
+        <ping:PingRequest/>
+    </soapenv:Body>
+</soapenv:Envelope>
+
+<!--
+        POST: http://example.com
+        Content-Type: text/xml; charset=utf-8
+        SOAPAction: "http://example.com"
+-->

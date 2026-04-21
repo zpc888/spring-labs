@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wsdl:definitions name="PingService"
+                  targetNamespace="http://example.com"
+                  xmlns:tns="http://example.com"
+                  xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+                  xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+                  xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+
+    <wsdl:types>
+        <xsd:schema targetNamespace="http://example.com">
+            <!-- Empty Input Element -->
+            <xsd:element name="PingRequest">
+                <xsd:complexType><xsd:sequence/></xsd:complexType>
+            </xsd:element>
+            <!-- Empty Output Element -->
+            <xsd:element name="PingResponse">
+                <xsd:complexType><xsd:sequence/></xsd:complexType>
+            </xsd:element>
+        </xsd:schema>
+    </wsdl:types>
+
+    <wsdl:message name="PingInputMessage">
+        <wsdl:part name="parameters" element="tns:PingRequest"/>
+    </wsdl:message>
+    <wsdl:message name="PingOutputMessage">
+        <wsdl:part name="parameters" element="tns:PingResponse"/>
+    </wsdl:message>
+
+    <wsdl:portType name="PingPortType">
+        <wsdl:operation name="Ping">
+            <wsdl:input message="tns:PingInputMessage"/>
+            <wsdl:output message="tns:PingOutputMessage"/>
+        </wsdl:operation>
+    </wsdl:portType>
+
+    <wsdl:binding name="PingBinding" type="tns:PingPortType">
+        <soap:binding style="document" transport="http://xmlsoap.org"/>
+        <wsdl:operation name="Ping">
+            <soap:operation soapAction="http://example.com"/>
+            <wsdl:input><soap:body use="literal"/></wsdl:input>
+            <wsdl:output><soap:body use="literal"/></wsdl:output>
+        </wsdl:operation>
+    </wsdl:binding>
+
+    <wsdl:service name="PingService">
+        <wsdl:port name="PingPort" binding="tns:PingBinding">
+            <soap:address location="http://example.com"/>
+        </wsdl:port>
+    </wsdl:service>
+</wsdl:definitions>

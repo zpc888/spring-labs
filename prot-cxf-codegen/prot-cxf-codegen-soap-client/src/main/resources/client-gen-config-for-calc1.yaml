@@ -4,4 +4,6 @@ operations:
     action: AddActionB
   Divide:
     action: DivideActionB
+  Subtract:
+    action: ${prot.calc.subtract-action}
 

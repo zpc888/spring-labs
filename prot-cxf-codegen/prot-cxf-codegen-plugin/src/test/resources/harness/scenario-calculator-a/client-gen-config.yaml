@@ -1,4 +1,7 @@
 x-config-key: calculatorClientA
+x-base-url: https://example.local/calc-a
+x-jaxb-context-paths:
+  - com.example.calc.a
 x-static-headers:
   - name: X-Calc-Mode
     value: scenario-a
@@ -7,6 +10,11 @@ x-dynamic-headers:
 x-operations:
   Add:
     action: AddConfiguredAction
+    static-headers:
+      - name: X-Calc-Op
+        value: add
   Divide:
     action: ""
+    dynamic-headers:
+      - com.example.headers.DivideDynamicHeader
 

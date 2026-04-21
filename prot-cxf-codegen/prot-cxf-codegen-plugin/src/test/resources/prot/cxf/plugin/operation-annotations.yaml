@@ -1,4 +1,11 @@
 x-operations:
   ping:
     action: pingAction
+    static-headers:
+      - name: X-Op
+        value: ping
+    dynamic-headers:
+      - com.example.PingHeaderProvider
+  echo:
+    action: ""
 

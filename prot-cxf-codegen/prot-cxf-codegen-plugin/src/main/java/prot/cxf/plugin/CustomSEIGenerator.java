@@ -20,7 +20,7 @@ import java.util.Map;
  */
 public class CustomSEIGenerator extends SEIGenerator {
 
-    private static final List<String> CLIENT_CONFIG_FLAGS = List.of("-clientgenconfig", "-clientgenconfig",
+    private static final List<String> CLIENT_CONFIG_FLAGS = List.of("-clientgenconfig", "--clientgenconfig",
             "--client-gen-config", "-client-gen-config",
             "-clientGenConfig", "--clientGenConfig");
     private ClientGenConfig clientGenConfig;
@@ -37,7 +37,10 @@ public class CustomSEIGenerator extends SEIGenerator {
         if (templateName.endsWith("/sei.vm")) {
             templateName = "prot-cxf-sei.vm";
             setAttributes("customConfigKey", getConfigKey());
+            setAttributes("customBaseUrl", getBaseUrl());
+            setAttributes("customJaxbContextPaths", getJaxbContextPaths());
             setAttributes("customStaticHeaders", getStaticHeaders());
+            setAttributes("customStaticHeadersAsStrings", getStaticHeadersAsStrings(getStaticHeaders()));
             setAttributes("customDynamicHeaders", getDynamicHeaders());
             setAttributes("customOperationConfigs", getOperationConfigs());
         }
@@ -50,6 +53,20 @@ public class CustomSEIGenerator extends SEIGenerator {
             return null;
         }
         return clientGenConfig.getConfigKey();
+    }
+
+    private String getBaseUrl() {
+        if (clientGenConfig == null) {
+            return null;
+        }
+        return clientGenConfig.getBaseUrl();
+    }
+
+    private List<String> getJaxbContextPaths() {
+        if (clientGenConfig == null) {
+            return List.of();
+        }
+        return clientGenConfig.getJaxbContextPaths();
     }
 
     private List<StaticHeader> getStaticHeaders() {
@@ -78,6 +95,24 @@ public class CustomSEIGenerator extends SEIGenerator {
         });
         return normalized;
     }
+
+    /**
+     * Convert StaticHeader objects to concatenated strings for annotation generation
+     */
+    public List<String> getStaticHeadersAsStrings(List<StaticHeader> headers) {
+        return headers.stream()
+                .map(StaticHeader::toConcatenatedFormat)
+                .filter(s -> !s.isBlank())
+                .toList();
+    }
+
+    /**
+     * Get dynamic headers (already strings/FQCNs)
+     */
+    public List<String> getDynamicHeadersAsFQCNs(List<String> headers) {
+        return headers;
+    }
+
 
     private String decapitalize(String value) {
         if (value == null || value.isBlank()) {

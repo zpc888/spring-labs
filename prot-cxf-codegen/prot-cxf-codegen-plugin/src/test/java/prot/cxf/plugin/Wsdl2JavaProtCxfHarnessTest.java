@@ -27,10 +27,13 @@ class Wsdl2JavaProtCxfHarnessTest {
         runWsdlToJava(scenarioDir, "ping.wsdl", true);
         String source = readGeneratedSeiSource(scenarioDir, "PingServicePortType.java");
 
-        Assertions.assertTrue(source.contains("@prot.soap.RegisteredSoapClient(\"pingClientA\")"));
-        Assertions.assertTrue(source.contains("@prot.soap.StaticHeaders"));
-        Assertions.assertTrue(source.contains("@prot.soap.DynamicHeaders"));
+        Assertions.assertTrue(source.contains("@prot.soap.SoapClient("));
+        Assertions.assertTrue(source.contains("value = \"pingClientA\""));
+        Assertions.assertTrue(source.contains("baseUrl = \"https://example.local/ping-a\""));
+        Assertions.assertTrue(source.contains("jaxbContextPaths = {"));
+        Assertions.assertTrue(source.contains("dynamicHeaders = {"));
         Assertions.assertTrue(source.contains("@prot.soap.SoapAction(\"PingActionA\")"));
+        Assertions.assertTrue(source.contains("@prot.soap.SoapMethodHeader("));
     }
 
     @Test
@@ -40,9 +43,10 @@ class Wsdl2JavaProtCxfHarnessTest {
         runWsdlToJava(scenarioDir, "ping.wsdl", true);
         String source = readGeneratedSeiSource(scenarioDir, "PingServicePortType.java");
 
-        Assertions.assertTrue(source.contains("@prot.soap.RegisteredSoapClient(\"pingClientB\")"));
-        Assertions.assertFalse(source.contains("@prot.soap.StaticHeaders"));
-        Assertions.assertFalse(source.contains("@prot.soap.DynamicHeaders"));
+        Assertions.assertTrue(source.contains("@prot.soap.SoapClient("));
+        Assertions.assertTrue(source.contains("value = \"pingClientB\""));
+        Assertions.assertFalse(source.contains("staticHeaders = {"));
+        Assertions.assertFalse(source.contains("dynamicHeaders = {\n        \"com.example.headers.DynamicA\""));
         Assertions.assertTrue(source.contains("@prot.soap.SoapAction(\"pingOperation\")"));
     }
 
@@ -53,10 +57,11 @@ class Wsdl2JavaProtCxfHarnessTest {
         runWsdlToJava(scenarioDir, "ping.wsdl", false);
         String source = readGeneratedSeiSource(scenarioDir, "PingServicePortType.java");
 
-        Assertions.assertTrue(source.contains("@prot.soap.RegisteredSoapClient(\"PingServicePortType\")"));
+        Assertions.assertTrue(source.contains("@prot.soap.SoapClient("));
+        Assertions.assertTrue(source.contains("value = \"PingServicePortType\""));
         Assertions.assertTrue(source.contains("@prot.soap.SoapAction(\"pingOperation\")"));
-        Assertions.assertFalse(source.contains("@prot.soap.StaticHeaders"));
-        Assertions.assertFalse(source.contains("@prot.soap.DynamicHeaders"));
+        Assertions.assertFalse(source.contains("staticHeaders = {"));
+        Assertions.assertFalse(source.contains("dynamicHeaders = {"));
     }
 
     @Test
@@ -66,13 +71,13 @@ class Wsdl2JavaProtCxfHarnessTest {
         runWsdlToJava(scenarioDir, "calculator.wsdl", true);
         String source = readGeneratedSeiSource(scenarioDir, "CalculatorPortType.java");
 
-        Assertions.assertTrue(source.contains("@prot.soap.RegisteredSoapClient(\"calculatorClientA\")"));
-        Assertions.assertTrue(source.contains("@prot.soap.StaticHeaders"));
-        Assertions.assertTrue(source.contains("@prot.soap.DynamicHeaders"));
+        Assertions.assertTrue(source.contains("value = \"calculatorClientA\""));
+        Assertions.assertTrue(source.contains("baseUrl = \"https://example.local/calc-a\""));
         Assertions.assertTrue(source.contains("@prot.soap.SoapAction(\"AddConfiguredAction\")"));
-        Assertions.assertTrue(containsAnySoapAction(source, "Divide", "divide"));
-        Assertions.assertTrue(containsAnySoapAction(source, "Subtract", "subtract"));
-        Assertions.assertTrue(containsAnySoapAction(source, "Multiply", "multiply"));
+        Assertions.assertTrue(source.contains("@prot.soap.SoapAction(\"http://example.com/calc/Divide\")"));
+        Assertions.assertTrue(source.contains("@prot.soap.SoapAction(\"http://example.com/calc/Subtract\")"));
+        Assertions.assertTrue(source.contains("@prot.soap.SoapAction(\"http://example.com/calc/Multiply\")"));
+        Assertions.assertTrue(source.contains("@prot.soap.SoapMethodHeader("));
     }
 
     @Test
@@ -82,11 +87,10 @@ class Wsdl2JavaProtCxfHarnessTest {
         runWsdlToJava(scenarioDir, "calculator.wsdl", true);
         String source = readGeneratedSeiSource(scenarioDir, "CalculatorPortType.java");
 
-        Assertions.assertTrue(source.contains("@prot.soap.RegisteredSoapClient(\"calculatorClientB\")"));
-        Assertions.assertFalse(source.contains("@prot.soap.StaticHeaders"));
-        Assertions.assertFalse(source.contains("@prot.soap.DynamicHeaders"));
+        Assertions.assertTrue(source.contains("value = \"calculatorClientB\""));
+        Assertions.assertFalse(source.contains("@prot.soap.SoapMethodHeader("));
         Assertions.assertTrue(source.contains("@prot.soap.SoapAction(\"AddActionB\")"));
-        Assertions.assertTrue(containsAnySoapAction(source, "Divide", "divide"));
+        Assertions.assertTrue(source.contains("@prot.soap.SoapAction(\"http://example.com/calc/Divide\")"));
     }
 
     private void runWsdlToJava(Path scenarioDir, String wsdlName, boolean withClientGenConfig) throws Exception {
@@ -168,12 +172,4 @@ class Wsdl2JavaProtCxfHarnessTest {
         }
     }
 
-    private static boolean containsAnySoapAction(String source, String... actionValues) {
-        for (String actionValue : actionValues) {
-            if (source.contains("@prot.soap.SoapAction(\"" + actionValue + "\")")) {
-                return true;
-            }
-        }
-        return false;
-    }
 }

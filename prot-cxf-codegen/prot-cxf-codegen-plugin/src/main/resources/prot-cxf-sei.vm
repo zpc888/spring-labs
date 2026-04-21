@@ -47,21 +47,25 @@ import ${import};
 #if($customConfigKey && !$customConfigKey.isBlank())
 #set($resolvedConfigKey = $customConfigKey)
 #end
-@prot.soap.RegisteredSoapClient("$resolvedConfigKey")
-#if($customStaticHeaders && !$customStaticHeaders.isEmpty())
-@prot.soap.StaticHeaders({
-#foreach($header in $customStaticHeaders)
-    @prot.soap.StaticHeader(name = "$header.name", value = "$header.value")#if($foreach.hasNext),#end
+@prot.soap.SoapClient(
+    value = "$resolvedConfigKey"#if($customBaseUrl && !$customBaseUrl.isBlank()),
+    baseUrl = "$customBaseUrl"#end#if($customJaxbContextPaths && !$customJaxbContextPaths.isEmpty()),
+    jaxbContextPaths = {
+#foreach($contextPath in $customJaxbContextPaths)
+        "$contextPath"#if($foreach.hasNext),#end
 #end
-})
+    }#end#if($customStaticHeadersAsStrings && !$customStaticHeadersAsStrings.isEmpty()),
+    staticHeaders = {
+#foreach($headerStr in $customStaticHeadersAsStrings)
+        "$headerStr"#if($foreach.hasNext),#end
 #end
-#if($customDynamicHeaders && !$customDynamicHeaders.isEmpty())
-@prot.soap.DynamicHeaders({
+    }#end#if($customDynamicHeaders && !$customDynamicHeaders.isEmpty()),
+    dynamicHeaders = {
 #foreach($headerClass in $customDynamicHeaders)
-    "$headerClass"#if($foreach.hasNext),#end
+        ${headerClass}.class#if($foreach.hasNext),#end
 #end
-})
-#end
+    }#end
+)
 #if ($markGenerated == "true")
 @Generated(value = "org.apache.cxf.tools.wsdlto.WSDLToJava"#if ($suppressGeneratedDate != "true"), date = "$currentdate"#end, comments = "$fullversion")
 #end
@@ -77,6 +81,9 @@ public interface $intf.Name ${seiSuperinterfaceString}{
         $annotation
     #end
     #set($resolvedActionName = $method.Name)
+    #if($method.SoapAction && !$method.SoapAction.isBlank())
+        #set($resolvedActionName = $method.SoapAction)
+    #end
     #if($customOperationConfigs)
         #set($operationConfig = $customOperationConfigs.get($method.Name))
         #if($operationConfig && $operationConfig.action && !$operationConfig.action.isBlank())
@@ -84,6 +91,24 @@ public interface $intf.Name ${seiSuperinterfaceString}{
         #end
     #end
     @prot.soap.SoapAction("$resolvedActionName")
+    #if($operationConfig && (($operationConfig.staticHeaders && !$operationConfig.staticHeaders.isEmpty()) || ($operationConfig.dynamicHeaders && !$operationConfig.dynamicHeaders.isEmpty())))
+    @prot.soap.SoapMethodHeader(
+        #if($operationConfig.staticHeaders && !$operationConfig.staticHeaders.isEmpty())
+        staticHeaders = {
+        #foreach($header in $operationConfig.staticHeaders)
+            "$header.toConcatenatedFormat()"#if($foreach.hasNext),#end
+        #end
+        }#if($operationConfig.dynamicHeaders && !$operationConfig.dynamicHeaders.isEmpty()),#end
+        #end
+        #if($operationConfig.dynamicHeaders && !$operationConfig.dynamicHeaders.isEmpty())
+        dynamicHeaders = {
+        #foreach($headerClass in $operationConfig.dynamicHeaders)
+            ${headerClass}.class#if($foreach.hasNext),#end
+        #end
+        }
+        #end
+    )
+    #end
     #if ($markGenerated == "true")
     @Generated(value = "org.apache.cxf.tools.wsdlto.WSDLToJava"#if ($suppressGeneratedDate != "true"), date = "$currentdate"#end)
     #end

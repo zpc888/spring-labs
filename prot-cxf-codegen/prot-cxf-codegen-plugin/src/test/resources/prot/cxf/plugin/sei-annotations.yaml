@@ -1,4 +1,8 @@
 x-config-key: customClient
+x-base-url: https://localhost:8081/mock
+x-jaxb-context-paths:
+  - com.example.a
+  - com.example.b
 x-static-headers:
   - name: X-Tenant
     value: demo

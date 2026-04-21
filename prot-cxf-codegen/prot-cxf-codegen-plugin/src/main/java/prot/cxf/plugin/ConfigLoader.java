@@ -7,8 +7,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 public final class ConfigLoader {
@@ -29,21 +32,16 @@ public final class ConfigLoader {
                 throw new ToolException("Unable to find client generation config: " + location);
             }
 
-            // Load YAML and validate keys
-            Yaml yaml = new Yaml();
-            Map<Object, Object> rawConfig = yaml.load(input);
-            validateCanonicalKeys(rawConfig, location);
-
-            if (rawConfig == null || rawConfig.isEmpty()) {
+            Object loaded = new Yaml().load(input);
+            if (loaded == null) {
                 return new ClientGenConfig();
             }
+            if (!(loaded instanceof Map<?, ?> rawConfig)) {
+                throw new ToolException("Invalid YAML client generation config: " + location
+                        + ". Root element must be a map.");
+            }
 
-            // Convert kebab-case keys to camelCase
-            Map<Object, Object> convertedConfig = convertKeysToCamelCase(rawConfig);
-
-            ClientGenConfig config = new ClientGenConfig();
-            // Manually map the converted config to the model
-            mapConfigToModel(convertedConfig, config);
+            ClientGenConfig config = mapConfig(rawConfig, location);
 
             validateConfig(config, location);
             return config;
@@ -56,95 +54,139 @@ public final class ConfigLoader {
         }
     }
 
-    private static Map<Object, Object> convertKeysToCamelCase(Map<Object, Object> map) {
-        Map<Object, Object> result = new LinkedHashMap<>();
-        for (Map.Entry<Object, Object> entry : map.entrySet()) {
-            String key = entry.getKey().toString();
-            Object value = entry.getValue();
+    private static ClientGenConfig mapConfig(Map<?, ?> raw, String location) {
+        requireSupportedKeys(raw.keySet(), location, true);
 
-            // Convert kebab-case key to camelCase (only for top-level keys starting with 'x-')
-            String camelCaseKey = convertToCamelCase(key);
-
-            // For nested maps and lists: Only convert the operations nested maps,
-            // but not the staticHeaders list items (which have natural keys like 'name', 'value')
-            if (camelCaseKey.equals("operations") && value instanceof Map) {
-                // Operations map keys are operation names - convert them too
-                Map<Object, Object> opsMap = (Map<Object, Object>) value;
-                Map<Object, Object> convertedOpsMap = new LinkedHashMap<>();
-                for (Map.Entry<Object, Object> opEntry : opsMap.entrySet()) {
-                    String opKey = opEntry.getKey().toString();
-                    Object opValue = opEntry.getValue();
-                    if (opValue instanceof Map) {
-                        convertedOpsMap.put(opKey, convertKeysToCamelCase((Map<Object, Object>) opValue));
-                    } else {
-                        convertedOpsMap.put(opKey, opValue);
-                    }
-                }
-                value = convertedOpsMap;
-            }
-            // Note: do NOT recursively convert lists like staticHeaders - their inner keys (name, value)
-            // are not kebab-case and should stay as-is
-
-            result.put(camelCaseKey, value);
-        }
-        return result;
+        ClientGenConfig config = new ClientGenConfig();
+        config.setConfigKey(asString(first(raw, "x-config-key", "configKey", "config-key", "configkey")));
+        config.setBaseUrl(asString(first(raw, "x-base-url", "baseUrl", "baseurl", "base-url")));
+        config.setJaxbContextPaths(asStringList(first(raw,
+                "x-jaxb-context-paths", "jaxbContextPaths", "jaxb-context-paths", "jaxbcontextpaths"),
+                "jaxbContextPaths", location));
+        config.setStaticHeaders(asStaticHeaders(first(raw, "x-static-headers", "staticHeaders", "static-headers"),
+                "staticHeaders", location));
+        config.setDynamicHeaders(asStringList(first(raw, "x-dynamic-headers", "dynamicHeaders", "dynamic-headers"),
+                "dynamicHeaders", location));
+        config.setOperations(asOperations(first(raw, "x-operations", "operations"), location));
+        return config;
     }
 
-    private static void mapConfigToModel(Map<Object, Object> map, ClientGenConfig config) {
-        if (map.containsKey("configKey")) {
-            config.setConfigKey((String) map.get("configKey"));
+    private static Map<String, OperationConfig> asOperations(Object raw, String location) {
+        if (raw == null) {
+            return Map.of();
         }
-        if (map.containsKey("staticHeaders")) {
-            Object staticHeadersObj = map.get("staticHeaders");
-            if (staticHeadersObj instanceof java.util.List) {
-                java.util.List<?> headersList = (java.util.List<?>) staticHeadersObj;
-                java.util.List<StaticHeader> headers = new java.util.ArrayList<>();
-                for (Object obj : headersList) {
-                    if (obj instanceof Map) {
-                        Map<Object, Object> headerMap = (Map<Object, Object>) obj;
-                        StaticHeader header = new StaticHeader();
-                        header.setName((String) headerMap.get("name"));
-                        header.setValue((String) headerMap.get("value"));
-                        if (headerMap.containsKey("ifExisting")) {
-                            header.setIfExisting((Boolean) headerMap.get("ifExisting"));
-                        }
-                        headers.add(header);
-                    }
-                }
-                config.setStaticHeaders(headers);
+        if (!(raw instanceof Map<?, ?> map)) {
+            throw new ToolException("Invalid operations in client generation config: " + location);
+        }
+
+        Map<String, OperationConfig> operations = new LinkedHashMap<>();
+        for (Map.Entry<?, ?> entry : map.entrySet()) {
+            String operationName = String.valueOf(entry.getKey());
+            if (!(entry.getValue() instanceof Map<?, ?> opMap)) {
+                throw new ToolException("Invalid operation entry in client generation config: " + location
+                        + ". Operation '" + operationName + "' must be a map.");
             }
+            requireSupportedKeys(opMap.keySet(), location, false);
+
+            OperationConfig operationConfig = new OperationConfig();
+            operationConfig.setAction(asString(first(opMap, "action")));
+            operationConfig.setStaticHeaders(asStaticHeaders(first(opMap, "static-headers", "staticHeaders"),
+                    "operations." + operationName + ".staticHeaders", location));
+            operationConfig.setDynamicHeaders(asStringList(first(opMap, "dynamic-headers", "dynamicHeaders"),
+                    "operations." + operationName + ".dynamicHeaders", location));
+            operations.put(operationName, operationConfig);
         }
-        if (map.containsKey("dynamicHeaders")) {
-            Object dynamicHeadersObj = map.get("dynamicHeaders");
-            if (dynamicHeadersObj instanceof java.util.List) {
-                config.setDynamicHeaders((java.util.List<String>) dynamicHeadersObj);
-            }
-        }
-        if (map.containsKey("operations")) {
-            Object operationsObj = map.get("operations");
-            if (operationsObj instanceof Map) {
-                Map<Object, Object> opsMap = (Map<Object, Object>) operationsObj;
-                Map<String, OperationConfig> operations = new LinkedHashMap<>();
-                for (Map.Entry<Object, Object> entry : opsMap.entrySet()) {
-                    if (entry.getValue() instanceof Map) {
-                        Map<Object, Object> opMap = (Map<Object, Object>) entry.getValue();
-                        OperationConfig opConfig = new OperationConfig();
-                        if (opMap.containsKey("action")) {
-                            opConfig.setAction((String) opMap.get("action"));
-                        }
-                        operations.put(entry.getKey().toString(), opConfig);
-                    }
-                }
-                config.setOperations(operations);
-            }
-        }
+        return operations;
     }
 
-    private static void validateCanonicalKeys(Object rawConfig, String location) {
-        if (rawConfig instanceof Map<?, ?> map) {
-            if (map.containsKey("opertions")) {
-                throw new ToolException("Invalid key 'opertions' in client generation config: "
-                        + location + ". Use canonical key 'x-operations'.");
+    private static List<StaticHeader> asStaticHeaders(Object raw, String field, String location) {
+        if (raw == null) {
+            return List.of();
+        }
+        if (!(raw instanceof List<?> list)) {
+            throw new ToolException("Invalid " + field + " in client generation config: " + location);
+        }
+        List<StaticHeader> headers = new ArrayList<>();
+        for (Object item : list) {
+            StaticHeader header = null;
+
+            // Support string format "name=value"
+            if (item instanceof String stringItem) {
+                header = StaticHeader.parseFromConcatenated(stringItem);
+                if (header == null) {
+                    throw new ToolException("Invalid " + field + " entry in client generation config: " + location
+                            + ". String format must be 'name=value' but got: " + stringItem);
+                }
+            }
+            // Support object format {name, value, ifExisting}
+            else if (item instanceof Map<?, ?> headerMap) {
+                header = new StaticHeader();
+                header.setName(asString(first(headerMap, "name")));
+                header.setValue(asString(first(headerMap, "value")));
+                Object ifExisting = first(headerMap, "ifExisting", "if-existing");
+                if (ifExisting instanceof Boolean value) {
+                    header.setIfExisting(value);
+                }
+            }
+            else {
+                throw new ToolException("Invalid " + field + " entry in client generation config: " + location
+                        + ". Expected string or object, got: " + (item != null ? item.getClass().getSimpleName() : "null"));
+            }
+
+            headers.add(header);
+        }
+        return headers;
+    }
+
+    private static List<String> asStringList(Object raw, String field, String location) {
+        if (raw == null) {
+            return List.of();
+        }
+        if (!(raw instanceof List<?> list)) {
+            throw new ToolException("Invalid " + field + " in client generation config: " + location);
+        }
+        List<String> values = new ArrayList<>();
+        for (Object item : list) {
+            values.add(asString(item));
+        }
+        return values;
+    }
+
+    private static Object first(Map<?, ?> map, String... keys) {
+        for (String key : keys) {
+            if (map.containsKey(key)) {
+                return map.get(key);
+            }
+        }
+        return null;
+    }
+
+    private static String asString(Object value) {
+        if (value == null) {
+            return null;
+        }
+        return String.valueOf(value);
+    }
+
+    private static void requireSupportedKeys(Set<?> keys, String location, boolean topLevel) {
+        Set<String> supported = topLevel
+                ? Set.of("x-config-key", "configKey", "config-key", "configkey",
+                "x-base-url", "baseUrl", "baseurl", "base-url",
+                "x-jaxb-context-paths", "jaxbContextPaths", "jaxb-context-paths", "jaxbcontextpaths",
+                "x-static-headers", "staticHeaders", "static-headers",
+                "x-dynamic-headers", "dynamicHeaders", "dynamic-headers",
+                "x-operations", "operations")
+                : Set.of("action", "static-headers", "staticHeaders", "dynamic-headers", "dynamicHeaders");
+
+        for (Object key : keys) {
+            String normalized = String.valueOf(key);
+            if (!supported.contains(normalized)) {
+                if ("opertions".equals(normalized)) {
+                    throw new ToolException("Invalid key 'opertions' in client generation config: "
+                            + location + ". Use canonical key 'x-operations'.");
+                }
+                throw new ToolException("Unsupported key '" + normalized + "' in client generation config: "
+                        + location);
             }
         }
     }
@@ -158,13 +200,24 @@ public final class ConfigLoader {
         }
 
         for (StaticHeader staticHeader : config.getStaticHeaders()) {
-            if (staticHeader.getName() == null || staticHeader.getName().isBlank()) {
+            if (!staticHeader.hasRequiredNameAndValue()) {
                 throw new ToolException("Invalid staticHeaders entry in client generation config: "
-                        + location + ". staticHeaders.name is required.");
+                        + location + ". staticHeaders.name and staticHeaders.value are required.");
             }
-            if (staticHeader.getValue() == null) {
-                throw new ToolException("Invalid staticHeaders entry in client generation config: "
-                        + location + ". staticHeaders.value is required.");
+        }
+
+        for (Map.Entry<String, OperationConfig> operation : config.getOperations().entrySet()) {
+            for (String dynamicHeader : operation.getValue().getDynamicHeaders()) {
+                if (dynamicHeader == null || !FQCN_PATTERN.matcher(dynamicHeader).matches()) {
+                    throw new ToolException("Invalid operations." + operation.getKey()
+                            + ".dynamicHeaders entry in client generation config: " + location);
+                }
+            }
+            for (StaticHeader staticHeader : operation.getValue().getStaticHeaders()) {
+                if (!staticHeader.hasRequiredNameAndValue()) {
+                    throw new ToolException("Invalid operations." + operation.getKey()
+                            + ".staticHeaders entry in client generation config: " + location);
+                }
             }
         }
     }
@@ -185,43 +238,4 @@ public final class ConfigLoader {
 
         return ConfigLoader.class.getClassLoader().getResourceAsStream(location);
     }
-
-
-    /**
-     * Convert kebab-case with x- prefix (x-config-key, x-static-headers) to camelCase (configKey, staticHeaders).
-     * Drops the 'x-' prefix and converts remaining parts to camelCase.
-     */
-    private static String convertToCamelCase(String kebabCase) {
-        if (kebabCase == null || !kebabCase.contains("-")) {
-            return kebabCase;
-        }
-
-        // Remove x- prefix if present
-        String withoutPrefix = kebabCase;
-        if (kebabCase.startsWith("x-")) {
-            withoutPrefix = kebabCase.substring(2);
-        }
-
-        if (!withoutPrefix.contains("-")) {
-            return withoutPrefix;
-        }
-
-        StringBuilder result = new StringBuilder();
-        String[] parts = withoutPrefix.split("-");
-        for (int i = 0; i < parts.length; i++) {
-            String part = parts[i];
-            if (i == 0) {
-                result.append(part);
-            } else {
-                if (part.length() > 0) {
-                    result.append(Character.toUpperCase(part.charAt(0)));
-                    if (part.length() > 1) {
-                        result.append(part.substring(1));
-                    }
-                }
-            }
-        }
-        return result.toString();
-    }
 }
-

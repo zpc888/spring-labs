@@ -8,7 +8,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.StringWriter;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -31,25 +30,34 @@ class CustomSEIGeneratorOperationAnnotationTest {
 
     @Test
     void template_rendersOperationAnnotation_onlyForMatchingMethod() throws Exception {
-        List<CustomSEIGeneratorSeiAnnotationTest.StubMethod> methods = List.of(
-                new CustomSEIGeneratorSeiAnnotationTest.StubMethod("ping"),
-                new CustomSEIGeneratorSeiAnnotationTest.StubMethod("echo")
-        );
+        CustomSEIGeneratorSeiAnnotationTest.StubMethod ping = new CustomSEIGeneratorSeiAnnotationTest.StubMethod("ping");
+        ping.setSoapAction("wsdlPingAction");
+        CustomSEIGeneratorSeiAnnotationTest.StubMethod echo = new CustomSEIGeneratorSeiAnnotationTest.StubMethod("echo");
+        echo.setSoapAction("wsdlEchoAction");
+        List<CustomSEIGeneratorSeiAnnotationTest.StubMethod> methods = List.of(ping, echo);
 
         VelocityContext ctx = buildContext(methods);
         ctx.put("customConfigKey", "client");
+        ctx.put("customBaseUrl", null);
+        ctx.put("customJaxbContextPaths", List.of());
         ctx.put("customStaticHeaders", List.of());
+        ctx.put("customStaticHeadersAsStrings", List.of());
         ctx.put("customDynamicHeaders", List.of());
         OperationConfig operationConfig = new OperationConfig();
         operationConfig.setAction("customPingAction");
+        operationConfig.setStaticHeaders(List.of(staticHeader("X-Op", "ping", null)));
+        operationConfig.setDynamicHeaders(List.of("com.example.OpHeader"));
         ctx.put("customOperationConfigs", Map.of("ping", operationConfig));
 
         String rendered = render(ctx);
 
         assertTrue(rendered.contains("@prot.soap.SoapAction(\"customPingAction\")"),
                 "Rendered output should contain configured ping SoapAction:\n" + rendered);
-        assertTrue(rendered.contains("@prot.soap.SoapAction(\"echo\")"),
-                "Rendered output should contain fallback echo SoapAction:\n" + rendered);
+        assertTrue(rendered.contains("@prot.soap.SoapAction(\"wsdlEchoAction\")"),
+                "Rendered output should contain wsdl fallback echo SoapAction:\n" + rendered);
+        assertTrue(rendered.contains("@prot.soap.SoapMethodHeader("));
+        assertTrue(rendered.contains("\"X-Op=ping\""));
+        assertTrue(rendered.contains("com.example.OpHeader.class"));
 
         int annotIdx = rendered.indexOf("@prot.soap.SoapAction(\"customPingAction\")");
         int pingIdx = rendered.indexOf("public void ping(");
@@ -61,14 +69,16 @@ class CustomSEIGeneratorOperationAnnotationTest {
 
     @Test
     void template_blankOperationAction_usesMethodNameFallback() throws Exception {
-        List<CustomSEIGeneratorSeiAnnotationTest.StubMethod> methods = List.of(
-                new CustomSEIGeneratorSeiAnnotationTest.StubMethod("ping"),
-                new CustomSEIGeneratorSeiAnnotationTest.StubMethod("echo")
-        );
+        CustomSEIGeneratorSeiAnnotationTest.StubMethod ping = new CustomSEIGeneratorSeiAnnotationTest.StubMethod("ping");
+        CustomSEIGeneratorSeiAnnotationTest.StubMethod echo = new CustomSEIGeneratorSeiAnnotationTest.StubMethod("echo");
+        List<CustomSEIGeneratorSeiAnnotationTest.StubMethod> methods = List.of(ping, echo);
 
         VelocityContext ctx = buildContext(methods);
         ctx.put("customConfigKey", "client");
+        ctx.put("customBaseUrl", null);
+        ctx.put("customJaxbContextPaths", List.of());
         ctx.put("customStaticHeaders", List.of());
+        ctx.put("customStaticHeadersAsStrings", List.of());
         ctx.put("customDynamicHeaders", List.of());
         OperationConfig operationConfig = new OperationConfig();
         operationConfig.setAction("   ");
@@ -80,6 +90,14 @@ class CustomSEIGeneratorOperationAnnotationTest {
                 "Blank configured action should fallback to method name");
         assertTrue(rendered.contains("@prot.soap.SoapAction(\"echo\")"),
                 "Unconfigured operation should fallback to method name");
+    }
+
+    private StaticHeader staticHeader(String name, String value, Boolean ifExisting) {
+        StaticHeader header = new StaticHeader();
+        header.setName(name);
+        header.setValue(value);
+        header.setIfExisting(ifExisting);
+        return header;
     }
 
     private VelocityContext buildContext(List<CustomSEIGeneratorSeiAnnotationTest.StubMethod> methods) {

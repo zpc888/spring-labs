@@ -29,35 +29,40 @@ class CustomSEIGeneratorSeiAnnotationTest {
     }
 
     @Test
-    void template_alwaysRendersRegisteredSoapClient_beforeInterfaceDeclaration() throws Exception {
+    void template_alwaysRendersSoapClient_beforeInterfaceDeclaration() throws Exception {
         VelocityContext ctx = buildMinimalContext();
         ctx.put("customConfigKey", "myClient");
+        ctx.put("customBaseUrl", null);
+        ctx.put("customJaxbContextPaths", List.of());
         ctx.put("customStaticHeaders", List.of());
         ctx.put("customDynamicHeaders", List.of());
         ctx.put("customOperationConfigs", Map.of());
 
         String rendered = render(ctx);
 
-        int annotationIdx = rendered.indexOf("@prot.soap.RegisteredSoapClient(\"myClient\")");
+        int annotationIdx = rendered.indexOf("@prot.soap.SoapClient(");
         int interfaceIdx = rendered.indexOf("public interface");
         assertTrue(annotationIdx >= 0,
-                "Rendered output should contain @prot.soap.RegisteredSoapClient(\"myClient\"):\n" + rendered);
+                "Rendered output should contain @prot.soap.SoapClient:\n" + rendered);
+        assertTrue(rendered.contains("value = \"myClient\""));
         assertTrue(interfaceIdx >= 0, "Rendered output should contain 'public interface'");
         assertTrue(annotationIdx < interfaceIdx,
-                "@prot.soap.RegisteredSoapClient should appear before 'public interface'");
+                "@prot.soap.SoapClient should appear before 'public interface'");
     }
 
     @Test
     void template_usesPortTypeNameWhenConfigKeyMissing() throws Exception {
         VelocityContext ctx = buildMinimalContext();
         ctx.put("customConfigKey", "   ");
+        ctx.put("customBaseUrl", null);
+        ctx.put("customJaxbContextPaths", List.of());
         ctx.put("customStaticHeaders", List.of());
         ctx.put("customDynamicHeaders", List.of());
         ctx.put("customOperationConfigs", Map.of());
 
         String rendered = render(ctx);
 
-        assertTrue(rendered.contains("@prot.soap.RegisteredSoapClient(\"MyService\")"),
+        assertTrue(rendered.contains("value = \"MyService\""),
                 "Port type name should be used as fallback config key");
     }
 
@@ -65,25 +70,33 @@ class CustomSEIGeneratorSeiAnnotationTest {
     void template_staticAndDynamicHeaders_areConditional() throws Exception {
         VelocityContext withHeaders = buildMinimalContext();
         withHeaders.put("customConfigKey", "myClient");
+        withHeaders.put("customBaseUrl", "https://localhost:8081/mock");
+        withHeaders.put("customJaxbContextPaths", List.of("com.example.a", "com.example.b"));
         withHeaders.put("customStaticHeaders", List.of(staticHeader("X-Tenant", "demo", true)));
+        withHeaders.put("customStaticHeadersAsStrings", List.of("X-Tenant=demo"));
         withHeaders.put("customDynamicHeaders", List.of("com.example.HeaderProvider"));
         withHeaders.put("customOperationConfigs", Map.of());
 
         String renderedWithHeaders = render(withHeaders);
-        assertTrue(renderedWithHeaders.contains("@prot.soap.StaticHeaders"));
-        assertTrue(renderedWithHeaders.contains("@prot.soap.StaticHeader(name = \"X-Tenant\", value = \"demo\")"));
-        assertTrue(renderedWithHeaders.contains("@prot.soap.DynamicHeaders"));
-        assertTrue(renderedWithHeaders.contains("\"com.example.HeaderProvider\""));
+        assertTrue(renderedWithHeaders.contains("baseUrl = \"https://localhost:8081/mock\""));
+        assertTrue(renderedWithHeaders.contains("jaxbContextPaths = {"));
+        assertTrue(renderedWithHeaders.contains("\"X-Tenant=demo\""));
+        assertTrue(renderedWithHeaders.contains("dynamicHeaders = {"));
+        assertTrue(renderedWithHeaders.contains("com.example.HeaderProvider.class"));
 
         VelocityContext withoutHeaders = buildMinimalContext();
         withoutHeaders.put("customConfigKey", "myClient");
+        withoutHeaders.put("customBaseUrl", null);
+        withoutHeaders.put("customJaxbContextPaths", List.of());
         withoutHeaders.put("customStaticHeaders", List.of());
+        withoutHeaders.put("customStaticHeadersAsStrings", List.of());
         withoutHeaders.put("customDynamicHeaders", List.of());
         withoutHeaders.put("customOperationConfigs", Map.of());
 
         String renderedWithoutHeaders = render(withoutHeaders);
-        assertFalse(renderedWithoutHeaders.contains("@prot.soap.StaticHeaders"));
-        assertFalse(renderedWithoutHeaders.contains("@prot.soap.DynamicHeaders"));
+        assertFalse(renderedWithoutHeaders.contains("baseUrl ="));
+        assertFalse(renderedWithoutHeaders.contains("jaxbContextPaths ="));
+        assertFalse(renderedWithoutHeaders.contains("dynamicHeaders ="));
     }
 
     // ---- helpers -------------------------------------------------------
@@ -138,10 +151,13 @@ class CustomSEIGeneratorSeiAnnotationTest {
 
     public static class StubMethod {
         private final String name;
+        private String soapAction;
 
         public StubMethod(String name) { this.name = name; }
 
         public String getName() { return name; }
+        public String getSoapAction() { return soapAction; }
+        public void setSoapAction(String soapAction) { this.soapAction = soapAction; }
         public String getJavaDoc() { return ""; }
         public List<String> getAnnotations() { return List.of(); }
         public String getReturnValue() { return "void"; }

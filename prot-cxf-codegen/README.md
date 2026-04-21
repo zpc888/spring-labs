@@ -22,24 +22,31 @@ Custom annotations can be injected with `-client-gen-config`:
 YAML format:
 
 ```yaml
-configKey: pingClient
+x-config-key: pingClient
+x-base-url: https://localhost:8081/mock
+x-jaxb-context-paths:
+  - com.example.ping
 
-staticHeaders:
+x-static-headers:
   - name: X-Tenant
     value: demo
 
-dynamicHeaders:
+x-dynamic-headers:
   - com.example.headers.AuthHeaderProvider
 
-operations:
+x-operations:
   pingOperation:
     action: PingAction
+    static-headers:
+      - name: X-Op
+        value: ping
 ```
 
 Generated SEI behavior:
-- Always emits `@a.b.RegisteredSoapClient("...")` (fallback: portType name)
-- Conditionally emits `@a.b2.StaticHeaders` / `@a.b2.DynamicHeaders`
-- Always emits per-method `@a.b3.SoapAction("...")` (fallback: method name)
+- Always emits `@prot.soap.SoapClient(value=...)` (fallback: portType name)
+- Conditionally adds `baseUrl`, `jaxbContextPaths`, `staticHeaders`, `dynamicHeaders` on `@prot.soap.SoapClient`
+- Always emits `@prot.soap.SoapAction("...")` (fallback: configured action → WSDL soapAction → operation name)
+- Emits `@prot.soap.SoapMethodHeader(...)` only when operation static/dynamic headers are configured
 
 Credit to  https://github.com/valmol/samples-cxf-codegen-plugin.git 
 Inspired by https://github.com/playframework/play-soap#wsdl2java
