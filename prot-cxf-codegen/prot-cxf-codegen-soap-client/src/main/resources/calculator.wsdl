@@ -69,6 +69,7 @@
             <wsdl:input message="tns:DivideInput"/>
             <wsdl:output message="tns:DivideOutput"/>
             <wsdl:fault name="DivideByZeroFault" message="tns:DivideByZeroFault"/>
+            <wsdl:fault name="OverflowFault" message="tns:OverflowFault"/>
         </wsdl:operation>
     </wsdl:portType>
 
@@ -130,6 +131,9 @@
             </wsdl:output>
             <wsdl:fault name="DivideByZeroFault">
                 <soap:fault name="DivideByZeroFault" use="literal"/>
+            </wsdl:fault>
+            <wsdl:fault name="OverflowFault">
+                <soap:fault name="OverflowFault" use="literal"/>
             </wsdl:fault>
         </wsdl:operation>
     </wsdl:binding>
