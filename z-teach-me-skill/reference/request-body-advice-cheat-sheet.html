@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RequestBodyAdvice Cheat Sheet</title>
+  <link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<main>
+  <p class="small"><a href="../lessons/0001-request-body-advice-internals.html">Back to lesson 0001</a></p>
+  <h1>RequestBodyAdvice cheat sheet</h1>
+  <p class="lede">Compressed reference for the Spring MVC request-body read path inside a Spring Boot application.</p>
+
+  <h2>Where it sits</h2>
+  <ol class="pipeline">
+    <li><code>DispatcherServlet</code> dispatches to the chosen handler.</li>
+    <li><code>RequestMappingHandlerAdapter</code> uses <code>RequestResponseBodyMethodProcessor</code> for <code>@RequestBody</code>.</li>
+    <li><code>AbstractMessageConverterMethodArgumentResolver.readWithMessageConverters(...)</code> selects an <code>HttpMessageConverter</code>.</li>
+    <li><code>RequestResponseBodyAdviceChain.beforeBodyRead(...)</code> can wrap the raw <code>HttpInputMessage</code>.</li>
+    <li>The converter deserializes bytes into the target object.</li>
+    <li><code>RequestResponseBodyAdviceChain.afterBodyRead(...)</code> can inspect or replace the object.</li>
+    <li>Bean validation runs afterward if the parameter has <code>@Valid</code> or <code>@Validated</code>.</li>
+  </ol>
+
+  <h2>Hook guide</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Hook</th>
+        <th>Best for</th>
+        <th>Bad fit</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>supports</code></td>
+        <td>Narrowing by parameter, target type, or converter type</td>
+        <td>Doing work; keep it as a cheap predicate</td>
+      </tr>
+      <tr>
+        <td><code>beforeBodyRead</code></td>
+        <td>Decrypting, signature checks, wrapping the input stream, raw-body logging</td>
+        <td>Object-level validation; no Java object exists yet</td>
+      </tr>
+      <tr>
+        <td><code>afterBodyRead</code></td>
+        <td>Inspecting or augmenting the deserialized object</td>
+        <td>Raw-byte work; the converter already consumed the stream</td>
+      </tr>
+      <tr>
+        <td><code>handleEmptyBody</code></td>
+        <td>Supplying defaults or rejecting empty payloads consistently</td>
+        <td>Normal non-empty requests</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Decision rule</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>If you need...</th>
+        <th>Prefer...</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Endpoint-agnostic security or auth</td>
+        <td>Security filters / Spring Security chain</td>
+      </tr>
+      <tr>
+        <td>Controller-aware request-body transformation</td>
+        <td><code>RequestBodyAdvice</code></td>
+      </tr>
+      <tr>
+        <td>Semantic bean validation after deserialization</td>
+        <td><code>@Valid</code>, validators, or binder validation</td>
+      </tr>
+      <tr>
+        <td>Cross-cutting metadata enrichment based on request body and handler parameter</td>
+        <td><code>afterBodyRead</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Important internals</h2>
+  <ul>
+    <li>Advice is applied only after a compatible converter is found.</li>
+    <li>Multiple advice beans can chain: each matching bean runs in order.</li>
+    <li><code>@ControllerAdvice</code> can scope by annotations, packages, or assignable types.</li>
+    <li><code>@RequestBody</code> is for body content, not form parameters.</li>
+  </ul>
+
+  <h2>Primary sources</h2>
+  <ul>
+    <li><a href="https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/web/servlet/mvc/method/annotation/RequestBodyAdvice.html">RequestBodyAdvice javadoc</a></li>
+    <li><a href="https://github.com/spring-projects/spring-framework/blob/main/spring-webmvc/src/main/java/org/springframework/web/servlet/mvc/method/annotation/AbstractMessageConverterMethodArgumentResolver.java">AbstractMessageConverterMethodArgumentResolver source</a></li>
+    <li><a href="https://github.com/spring-projects/spring-framework/blob/main/spring-webmvc/src/main/java/org/springframework/web/servlet/mvc/method/annotation/RequestResponseBodyAdviceChain.java">RequestResponseBodyAdviceChain source</a></li>
+  </ul>
+</main>
+</body>
+</html>
