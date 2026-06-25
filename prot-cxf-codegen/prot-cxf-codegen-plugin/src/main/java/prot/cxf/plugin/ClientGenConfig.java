@@ -7,6 +7,8 @@ import java.util.Map;
 public class ClientGenConfig {
 
     private String configKey;
+    private String baseUrl;
+    private List<String> jaxbContextPaths;
     private List<StaticHeader> staticHeaders;
     private List<String> dynamicHeaders;
     private Map<String, OperationConfig> operations;
@@ -17,6 +19,22 @@ public class ClientGenConfig {
 
     public void setConfigKey(String configKey) {
         this.configKey = configKey;
+    }
+
+    public String getBaseUrl() {
+        return baseUrl;
+    }
+
+    public void setBaseUrl(String baseUrl) {
+        this.baseUrl = baseUrl;
+    }
+
+    public List<String> getJaxbContextPaths() {
+        return jaxbContextPaths == null ? List.of() : jaxbContextPaths;
+    }
+
+    public void setJaxbContextPaths(List<String> jaxbContextPaths) {
+        this.jaxbContextPaths = jaxbContextPaths;
     }
 
     public List<StaticHeader> getStaticHeaders() {
@@ -52,6 +70,6 @@ public class ClientGenConfig {
 
     public String resolveOperationAction(String operationName) {
         OperationConfig operationConfig = getOperations().get(operationName);
-        return operationConfig == null ? operationName : operationConfig.resolveAction(operationName);
+        return operationConfig == null ? operationName : operationConfig.resolveAction(operationName, operationName);
     }
 }

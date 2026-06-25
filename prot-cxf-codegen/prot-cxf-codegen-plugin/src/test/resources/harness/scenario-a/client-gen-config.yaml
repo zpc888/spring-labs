@@ -1,4 +1,7 @@
 x-config-key: pingClientA
+x-base-url: https://example.local/ping-a
+x-jaxb-context-paths:
+  - com.example.ping.a
 x-static-headers:
   - name: X-Tenant
     value: tenant-a
@@ -8,4 +11,9 @@ x-dynamic-headers:
 x-operations:
   pingOperation:
     action: PingActionA
+    static-headers:
+      - name: X-Op
+        value: ping-a
+    dynamic-headers:
+      - com.example.headers.OpDynamicA
 

@@ -1,0 +1,13 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ping="http://example.com">
+    <soapenv:Header/>
+    <soapenv:Body>
+        <ping:PingResponse/>
+    </soapenv:Body>
+</soapenv:Envelope>
+
+<!--
+
+HTTP/1.1 200 OK
+Content-Type: text/xml; charset=utf-8
+
+-->

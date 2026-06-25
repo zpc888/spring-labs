@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lesson 0001: RequestBodyAdvice internals</title>
+  <link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<main>
+  <p class="small">Mission: understand Spring MVC request-body internals well enough to place logging, pre-auth, and validation in the right layer.</p>
+  <h1>How <code>RequestBodyAdvice</code> wraps the <code>@RequestBody</code> pipeline</h1>
+  <p class="lede">This lesson gives you one practical win: you should be able to look at a cross-cutting requirement and decide whether it belongs in <code>beforeBodyRead</code>, <code>afterBodyRead</code>, bean validation, or a security/filter layer.</p>
+
+  <div class="callout">
+    <strong>Primary source for this lesson:</strong>
+    <a href="https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/web/servlet/mvc/method/annotation/RequestBodyAdvice.html">RequestBodyAdvice javadoc</a>,
+    then the Spring Framework source for
+    <a href="https://github.com/spring-projects/spring-framework/blob/main/spring-webmvc/src/main/java/org/springframework/web/servlet/mvc/method/annotation/AbstractMessageConverterMethodArgumentResolver.java">AbstractMessageConverterMethodArgumentResolver</a>.
+  </div>
+
+  <h2>The mental model</h2>
+  <ol class="pipeline">
+    <li>A controller parameter marked <code>@RequestBody</code> is resolved by <code>RequestResponseBodyMethodProcessor</code>.</li>
+    <li>That processor delegates to <code>AbstractMessageConverterMethodArgumentResolver.readWithMessageConverters(...)</code>.</li>
+    <li>Spring selects a compatible <code>HttpMessageConverter</code> for the request content type and target parameter type.</li>
+    <li>If a converter is found and the body exists, Spring runs every matching <code>RequestBodyAdvice.beforeBodyRead(...)</code> in order.</li>
+    <li>The converter reads bytes and builds the Java object.</li>
+    <li>Spring then runs every matching <code>afterBodyRead(...)</code> in order.</li>
+    <li>Only after that does <code>RequestResponseBodyMethodProcessor.resolveArgument(...)</code> run bean validation for <code>@Valid</code> or <code>@Validated</code>.</li>
+  </ol>
+
+  <p>That ordering is the key insight: <strong><code>RequestBodyAdvice</code> is in the read/deserialization pipeline, not the validation pipeline.</strong> Spring Boot does not replace this behavior; it uses Spring MVC's mechanism inside your Boot app.</p>
+
+  <h2>What each hook is really for</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Hook</th>
+        <th>You have access to</th>
+        <th>Use it when...</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>supports</code></td>
+        <td>Method parameter, target type, converter class</td>
+        <td>You want a cheap yes/no gate, such as "only JSON" or "only methods annotated with <code>@SignedPayload</code>"</td>
+      </tr>
+      <tr>
+        <td><code>beforeBodyRead</code></td>
+        <td>Raw <code>HttpInputMessage</code></td>
+        <td>You need to wrap the stream, decrypt bytes, check a body signature, or log the raw payload safely</td>
+      </tr>
+      <tr>
+        <td><code>afterBodyRead</code></td>
+        <td>The deserialized object</td>
+        <td>You need object-aware checks, enrichment, normalization, or post-read auditing</td>
+      </tr>
+      <tr>
+        <td><code>handleEmptyBody</code></td>
+        <td>Missing body case</td>
+        <td>You want a consistent default or a uniform empty-body policy</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>How this maps to your goals</h2>
+  <div class="card">
+    <p><strong>Logging:</strong> use <code>beforeBodyRead</code> only if you truly need raw-body logging, and make redaction a first-class concern. If object-level logging is enough, <code>afterBodyRead</code> is usually safer.</p>
+    <p><strong>Pre-auth / signature checks:</strong> if the rule depends on raw body bytes or needs the selected controller method, <code>beforeBodyRead</code> can fit. If the rule is endpoint-agnostic authentication or authorization, prefer the Spring Security / filter layer.</p>
+    <p><strong>Validation:</strong> if you mean normal bean constraints on the object, use <code>@Valid</code> or a validator. If you mean cross-cutting body semantics that must happen before the controller sees the object, <code>afterBodyRead</code> can enforce them.</p>
+  </div>
+
+  <h2>Why <code>@ControllerAdvice</code> matters</h2>
+  <p>The <code>RequestBodyAdvice</code> contract can be registered directly, but the common path is an advice bean annotated with <code>@ControllerAdvice</code>. Spring detects those beans at startup and applies them globally unless you scope them by controller annotations, packages, or assignable types. Advice beans also have ordering rules, so multiple matching advices can chain in a predictable order.</p>
+
+  <pre><code>@RestControllerAdvice
+@Order(100)
+final class SignedPayloadAdvice extends RequestBodyAdviceAdapter {
+
+    @Override
+    public boolean supports(MethodParameter parameter, Type targetType,
+            Class&lt;? extends HttpMessageConverter&lt;?&gt;&gt; converterType) {
+        return parameter.hasParameterAnnotation(SignedPayload.class);
+    }
+
+    @Override
+    public HttpInputMessage beforeBodyRead(HttpInputMessage inputMessage, MethodParameter parameter,
+            Type targetType, Class&lt;? extends HttpMessageConverter&lt;?&gt;&gt; converterType) {
+        // Verify headers, validate signature, or wrap with a decrypting input message.
+        return inputMessage;
+    }
+
+    @Override
+    public Object afterBodyRead(Object body, HttpInputMessage inputMessage, MethodParameter parameter,
+            Type targetType, Class&lt;? extends HttpMessageConverter&lt;?&gt;&gt; converterType) {
+        // Enrich or reject the fully deserialized object.
+        return body;
+    }
+}</code></pre>
+
+  <h2>Three fast retrieval checks</h2>
+
+  <div class="quiz" data-answer="a">
+    <strong>1. You must decrypt the payload before Jackson reads it. Which layer fits best?</strong>
+    <div class="quiz-options">
+      <button data-choice="a" data-explanation="Decryption must happen before the converter consumes the stream.">wrap raw stream</button>
+      <button data-choice="b" data-explanation="Too late; the converter already built the object.">inspect java object</button>
+      <button data-choice="c" data-explanation="That hook is only for missing bodies.">fill empty body</button>
+      <button data-choice="d" data-explanation="Bean validation sees the object after deserialization.">validate bean fields</button>
+    </div>
+    <p class="quiz-feedback" aria-live="polite"></p>
+  </div>
+
+  <div class="quiz" data-answer="a">
+    <strong>2. Which step normally happens after <code>afterBodyRead</code>?</strong>
+    <div class="quiz-options">
+      <button data-choice="a" data-explanation="`RequestResponseBodyMethodProcessor.resolveArgument(...)` validates afterward.">bean validation runs</button>
+      <button data-choice="b" data-explanation="Converter selection already happened earlier.">converter selects first</button>
+      <button data-choice="c" data-explanation="Handler mapping happened before argument resolution.">servlet mapping repeats</button>
+      <button data-choice="d" data-explanation="The body stream is not rewound as a normal next step.">body bytes rewind</button>
+    </div>
+    <p class="quiz-feedback" aria-live="polite"></p>
+  </div>
+
+  <div class="quiz" data-answer="a">
+    <strong>3. Which layer is usually better for endpoint-agnostic authentication?</strong>
+    <div class="quiz-options">
+      <button data-choice="a" data-explanation="Authentication that is not controller-specific usually belongs before MVC body resolution.">security filter chain</button>
+      <button data-choice="b" data-explanation="Advice is better when the need is tied to body conversion or controller method context.">request advice chain</button>
+      <button data-choice="c" data-explanation="That is too late and too local.">controller method body</button>
+      <button data-choice="d" data-explanation="Converters deserialize; they are not the auth layer.">message converter read</button>
+    </div>
+    <p class="quiz-feedback" aria-live="polite"></p>
+  </div>
+
+  <h2>One subtle internal detail worth remembering</h2>
+  <p><code>RequestResponseBodyAdviceChain</code> loops through every matching advice in order for both <code>beforeBodyRead</code> and <code>afterBodyRead</code>. That means one advice can wrap the input message and the next advice sees the wrapped version. This is powerful, but it also means ordering mistakes can produce very confusing behavior.</p>
+
+  <h2>Reference and next step</h2>
+  <ul class="next-steps">
+    <li>Keep the <a href="../reference/request-body-advice-cheat-sheet.html">cheat sheet</a> open while reading source.</li>
+    <li>Read the <a href="https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/web/servlet/mvc/method/annotation/RequestBodyAdvice.html">RequestBodyAdvice javadoc</a>, then inspect <a href="https://github.com/spring-projects/spring-framework/blob/main/spring-webmvc/src/main/java/org/springframework/web/servlet/mvc/method/annotation/AbstractMessageConverterMethodArgumentResolver.java">the read path source</a>.</li>
+    <li>Ask follow-up questions here any time, especially if you want the next lesson to cover custom <code>HttpInputMessage</code> wrappers, ordering, or a concrete logging/signature-validation implementation.</li>
+  </ul>
+</main>
+<script src="../assets/quiz.js"></script>
+</body>
+</html>

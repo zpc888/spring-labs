@@ -16,6 +16,12 @@ class ClientGenConfigTest {
     }
 
     @Test
+    void getJaxbContextPaths_whenUnset_returnsEmptyList() {
+        ClientGenConfig config = new ClientGenConfig();
+        assertEquals(List.of(), config.getJaxbContextPaths());
+    }
+
+    @Test
     void resolveConfigKey_prefersConfiguredValue() {
         ClientGenConfig config = new ClientGenConfig();
         config.setConfigKey("configuredClient");
@@ -76,5 +82,12 @@ class ClientGenConfigTest {
     void getDynamicHeaders_whenUnset_returnsEmptyList() {
         ClientGenConfig config = new ClientGenConfig();
         assertEquals(List.of(), config.getDynamicHeaders());
+    }
+
+    @Test
+    void baseUrl_roundTrips() {
+        ClientGenConfig config = new ClientGenConfig();
+        config.setBaseUrl("https://localhost:8081/mock");
+        assertEquals("https://localhost:8081/mock", config.getBaseUrl());
     }
 }

@@ -1,4 +1,5 @@
 x-config-key: pingClientB
+x-base-url: https://example.local/ping-b
 x-operations:
   pingOperation:
     action: ""

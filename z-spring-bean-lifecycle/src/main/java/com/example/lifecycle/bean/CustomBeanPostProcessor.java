@@ -5,6 +5,7 @@ import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.core.Ordered;
 import org.springframework.lang.NonNull;
 
+// PriorityOrder, Order, No Order
 public class CustomBeanPostProcessor implements BeanPostProcessor, Ordered {
 
     private int order = Ordered.LOWEST_PRECEDENCE;

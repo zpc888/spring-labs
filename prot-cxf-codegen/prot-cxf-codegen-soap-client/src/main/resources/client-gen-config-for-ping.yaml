@@ -1,5 +1,8 @@
 x-config-key: pingClientB
-operations:
+x-base-url: https://localhost:8080/ping
+x-jaxb-context-paths:
+  - com.ibm.was.wssample.sei.ping
+x-operations:
   pingOperation:
     action: ""
 

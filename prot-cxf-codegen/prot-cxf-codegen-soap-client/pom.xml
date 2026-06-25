@@ -121,7 +121,7 @@
                                         <extraarg>-fe</extraarg>
                                         <extraarg>prot-cxf</extraarg>
                                         <extraarg>-clientGenConfig</extraarg>
-                                        <extraarg>${basedir}/src/main/resources/client-gen-config-for-calc1.yaml</extraarg>
+                                        <extraarg>${basedir}/src/main/resources/client-gen-config-for-calc2.yaml</extraarg>
                                     </extraargs>
                                 </wsdlOption>
                             </wsdlOptions>
@@ -145,6 +145,18 @@
                                         <!-- frontend won't generate client stub, comment out the below 2 lines, it will generate stub class -->
                                         <extraarg>-fe</extraarg>
                                         <extraarg>prot-cxf</extraarg>
+                                    </extraargs>
+                                </wsdlOption>
+                                <wsdlOption>
+                                    <wsdl>${basedir}/src/main/resources/ping-empty-req-res.wsdl</wsdl>
+                                    <extraargs>
+                                        <extraarg>-p</extraarg>
+                                        <extraarg>com.prot.ping.empty</extraarg>
+                                        <!-- frontend won't generate client stub, comment out the below 2 lines, it will generate stub class -->
+                                        <extraarg>-fe</extraarg>
+                                        <extraarg>prot-cxf</extraarg>
+                                        <extraarg>-exsh</extraarg>
+                                        <extraarg>true</extraarg>
                                     </extraargs>
                                 </wsdlOption>
                             </wsdlOptions>

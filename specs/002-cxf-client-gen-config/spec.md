@@ -20,46 +20,65 @@
 ### Session 2026-04-20
 
 - Q: What is the canonical YAML key for per-operation config in this feature? → A: `operations` (correcting prior typo `opertions`).
-- Q: What YAML fields are required for the new client generation model? → A: `x-config-key`, `x-static-headers[{name,value,ifExisting?}]`, `x-dynamic-headers[List<FQCN>]`, and `x-operations.<operationName>.action` (kebab-case in YAML); mapped to `configKey`, `staticHeaders`, `dynamicHeaders`, `operations` in Java model (camelCase).
-- Q: How is `resolvedConfigKey` computed for `@prot.soap.RegisteredSoapClient`? → A: Use `configKey` when non-null and non-empty; otherwise use the SEI portType name.
-- Q: Which class-level annotations are mandatory vs optional on generated SEI? → A: Always emit `@prot.soap.RegisteredSoapClient(resolvedConfigKey)`; emit `@prot.soap.StaticHeaders` and `@prot.soap.DynamicHeaders` only when corresponding YAML values are present.
-- Q: How is `resolvedActionName` computed for operation annotations? → A: Always emit `@prot.soap.SoapAction(resolvedActionName)` where `resolvedActionName` is configured `action` when non-empty, else the operation name.
+- Q: What YAML fields are required for the new client generation model? → A: `x-config-key` (required semantic fallback), optional `x-base-url`, optional `x-jaxb-context-paths`, `x-static-headers[{name,value,ifExisting?}]`, `x-dynamic-headers[List<FQCN>]`, and `x-operations.<operationName>.{action,static-headers,dynamic-headers}`.
+- Q: How is `resolvedConfigKey` computed for `@prot.soap.SoapClient`? → A: Use `configKey` when non-null and non-empty; otherwise use the SEI portType name as mandatory fallback value.
+- Q: Which class-level annotations are mandatory vs optional on generated SEI? → A: Always emit `@prot.soap.SoapClient(value=resolvedConfigKey)`; include optional `baseUrl`, `jaxbContextPaths`, `staticHeaders`, `dynamicHeaders` only when configured.
+- Q: How is `resolvedActionName` computed for operation annotations? → A: Always emit `@prot.soap.SoapAction(resolvedActionName)` where `resolvedActionName` is configured `action` when non-empty, else WSDL binding `soap:operation@soapAction`.
 
 ### Session 2026-04-20 (Continued)
 
-- Q: What is the canonical annotation package namespace for client registration, headers, and actions? → A: `prot.soap.*` (@prot.soap.RegisteredSoapClient, @prot.soap.StaticHeaders, @prot.soap.DynamicHeaders, @prot.soap.SoapAction).
-- Q: How should YAML field naming differ from Java object model naming? → A: YAML uses kebab-case (x-config-key, x-static-headers, x-dynamic-headers, x-operations); Java model uses camelCase (configKey, staticHeaders, dynamicHeaders, operations). SnakeYAML auto-maps between them.
+- Q: What is the canonical annotation package namespace for client registration, headers, and actions? → A: `prot.soap.*` (@prot.soap.SoapClient, @prot.soap.SoapAction, @prot.soap.SoapMethodHeader).
+- Q: How should YAML field naming differ from Java object model naming? → A: YAML uses kebab-case canonical keys (including `x-base-url`, `x-jaxb-context-paths`) with accepted aliases for selected fields; Java model uses camelCase (`baseUrl`, `jaxbContextPaths`, etc.). SnakeYAML handles mapping.
+
+### Session 2026-04-21 (Enhancement Round)
+
+- Q: What YAML aliases should be supported for static-headers and dynamic-headers fields? → A: Canonical `x-static-headers`/`x-dynamic-headers` with accepted aliases `static-headers`, `staticHeaders`, `dynamic-headers`, `dynamicHeaders` (all mapped by SnakeYAML).
+- Q: Should staticHeaders in generated annotations use concatenated "X=Y" strings or @SoapStaticHeader objects? → A: Both YAML input and generated annotation should use concatenated "X=Y" string format (e.g., `"X-Calc-Op=minus"`).
+- Q: Should dynamicHeaders in generated annotations use Class<?> references or String FQCNs? → A: Generated annotations should use Class<?> references (e.g., `prot.soap.header.SoapHeaderAContributor.class`) with proper imports.
+- Q: Should header format changes apply to both @prot.soap.SoapClient and @prot.soap.SoapMethodHeader? → A: Yes, both class-level and method-level annotations should use the same concatenated string format for staticHeaders and Class references for dynamicHeaders.
+- Q: Should existing unit tests be rewritten or incrementally updated? → A: Incrementally update test assertions to verify new formats while maintaining backward-compatibility baseline (no config = no custom annotations).
+
+### Session 2026-04-22 (Enhancement Round II)
+
+- Q: Should OperationConfig YAML accept header field aliases in addition to canonical kebab-case? → A: Yes. `x-static-headers`, `static-headers`, `staticHeaders`, `staticheaders` all map to `staticHeaders`; `x-dynamic-headers`, `dynamic-headers`, `dynamicHeaders`, `dynamicheaders` all map to `dynamicHeaders`.
+- Q: What is the final YAML input format for static headers in both top-level and operation-level config? → A: Concatenated "name=value" strings (e.g., `["X-Calc-Op=minus", "X-Overflow=false"]`), not objects with separate name/value fields.
+- Q: What is the final generated annotation format for dynamic headers in both @prot.soap.SoapClient and @prot.soap.SoapMethodHeader? → A: Class<?> references with proper imports (e.g., `dynamicHeaders = {prot.soap.header.SoapHeaderAContributor.class, prot.soap.header.SoapHeaderBContributor.class}`).
+- Q: What code coverage threshold must unit tests meet for prot.cxf.plugin package classes? → A: Minimum 80% line coverage; all unit tests must pass with coverage reports generated.
+- Q: Which test scenarios must be verified to ensure correct handling of new header formats and YAML aliases? → A: Four scenarios: (1) ping.wsdl without config, (2) ping.wsdl with config, (3) calculator.wsdl with multi-operation headers and override variations, (4) test cases covering string and Class type formats.
 
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Custom Annotation on Generated SEI Interface (Priority: P1)
 
-As a SOAP client developer, I want generated SEI interfaces to include standardized client registration and optional header annotations from YAML, so that SOAP clients are configured consistently at generation time.
+As a SOAP client developer, I want generated SEI interfaces to include standardized `@prot.soap.SoapClient` annotation values from YAML, so that SOAP clients are configured consistently at generation time.
 
 **Why this priority**: Core value proposition - the main feature request is to add extra annotations to SEI.
 
-**Independent Test**: Run wsdl2java with `--client-gen-config` and verify generated SEI contains mandatory `@prot.soap.RegisteredSoapClient(resolvedConfigKey)` and optional header annotations only when configured.
+**Independent Test**: Run wsdl2java with `--client-gen-config` and verify generated SEI contains mandatory `@prot.soap.SoapClient(value=resolvedConfigKey)` plus optional `baseUrl`, `jaxbContextPaths`, `staticHeaders`, and `dynamicHeaders` only when configured.
 
 **Acceptance Scenarios**:
 
-1. **Given** a valid YAML with non-empty `x-config-key`, **When** running wsdl2java with `--client-gen-config`, **Then** the generated SEI includes `@prot.soap.RegisteredSoapClient(configKey)`.
-2. **Given** YAML with null/empty `x-config-key`, **When** generation runs, **Then** `@prot.soap.RegisteredSoapClient` uses portType name as `resolvedConfigKey`.
-3. **Given** YAML defines `x-static-headers` and/or `x-dynamic-headers`, **When** generation runs, **Then** SEI includes `@prot.soap.StaticHeaders` and/or `@prot.soap.DynamicHeaders` respectively.
+1. **Given** a valid YAML with non-empty `x-config-key`, **When** running wsdl2java with `--client-gen-config`, **Then** the generated SEI includes `@prot.soap.SoapClient(value=configKey)`.
+2. **Given** YAML with null/empty `x-config-key`, **When** generation runs, **Then** `@prot.soap.SoapClient` uses portType name as mandatory `value` fallback.
+3. **Given** YAML defines top-level `x-base-url` and/or `x-jaxb-context-paths`, **When** generation runs, **Then** SEI includes those values in `@prot.soap.SoapClient`.
+4. **Given** YAML defines top-level static and/or dynamic headers, **When** generation runs, **Then** they are emitted as `@prot.soap.SoapClient(staticHeaders=..., dynamicHeaders=...)` without generating separate type-level header annotations.
 
 ---
 
 ### User Story 2 - Custom Annotation Per Operation (Priority: P2)
 
-As a SOAP client developer, I want each generated SEI operation method to always receive `@a.b3.SoapAction` with a resolved action name, so that runtime invocation action mapping is explicit and predictable.
+As a SOAP client developer, I want each generated SEI operation method to always receive `@prot.soap.SoapAction` and optional `@prot.soap.SoapMethodHeader`, so that runtime invocation action and header mapping are explicit and predictable.
 
 **Why this priority**: Enables fine-grained control over each method's annotations.
 
-**Independent Test**: Run wsdl2java with YAML `x-operations` entries and verify each generated method includes `@prot.soap.SoapAction` resolved from configured action or fallback operation name.
+**Independent Test**: Run wsdl2java with YAML `x-operations` entries and verify each generated method includes `@prot.soap.SoapAction` resolved from configured action or WSDL binding `soapAction` fallback, and emits `@prot.soap.SoapMethodHeader` only when operation headers are configured.
 
 **Acceptance Scenarios**:
 
 1. **Given** YAML contains `x-operations.ping.action: pingAction`, **When** wsdl2java runs, **Then** generated `ping` method has `@prot.soap.SoapAction("pingAction")`.
-2. **Given** YAML contains `x-operations.echo` without action or with empty action, **When** code is generated, **Then** generated `echo` method has `@prot.soap.SoapAction("echo")`.
+2. **Given** YAML contains `x-operations.echo` without action or with empty action, **When** code is generated, **Then** generated `echo` method has `@prot.soap.SoapAction("<wsdlBindingSoapAction>")`.
+3. **Given** YAML contains `x-operations.ping.static-headers` and/or `x-operations.ping.dynamic-headers`, **When** code is generated, **Then** `ping` includes `@prot.soap.SoapMethodHeader` with configured values.
+4. **Given** an operation has neither static nor dynamic headers configured, **When** code is generated, **Then** no `@prot.soap.SoapMethodHeader` is emitted for that operation.
 
 ---
 
@@ -92,6 +111,7 @@ As a plugin developer, I want plugin-level tests that execute CXF `wsdl2java` th
 1. **Given** `clientGenConfig` A and frontend `prot-cxf`, **When** wsdl2java runs against `src/test/resources/backend/soap/ping.wsdl`, **Then** generated SEI output contains the annotations defined by config A.
 2. **Given** `clientGenConfig` B and frontend `prot-cxf`, **When** wsdl2java runs against the same fixture, **Then** generated SEI output contains the annotations defined by config B and differs from config A expectations.
 3. **Given** no `clientGenConfig`, **When** wsdl2java runs with frontend `prot-cxf`, **Then** generation succeeds and no config-driven custom annotations are emitted.
+4. **Given** the soap-client module consumes generated classes, **When** `mvn test` runs in `prot-cxf-codegen-soap-client`, **Then** compilation and runtime tests remain compatible with generated annotations.
 
 ---
 
@@ -120,8 +140,10 @@ As a plugin developer, I want a dedicated unit test suite for the plugin classes
 - What if two annotations are specified for the same operation/class?
 - How to handle empty or empty YAML file?
 - If `clientGenConfig` is omitted, generation MUST follow baseline behavior and emit no config-driven custom annotations.
-- If `configKey` is null/empty, `resolvedConfigKey` MUST fallback to the generated portType name.
-- If `operations.<name>.action` is null/empty, `resolvedActionName` MUST fallback to `<name>`.
+- If `configKey` is null/empty, `@prot.soap.SoapClient.value` MUST fallback to the generated portType name.
+- If `operations.<name>.action` is null/empty, `resolvedActionName` MUST fallback to WSDL binding `soap:operation@soapAction`.
+- If both configured action and WSDL binding `soapAction` are empty, fallback MUST be the operation name.
+- Operation-level `@prot.soap.SoapMethodHeader` MUST NOT be emitted when both static and dynamic header lists are empty.
 
 ## Requirements *(mandatory)*
 
@@ -130,50 +152,71 @@ As a plugin developer, I want a dedicated unit test suite for the plugin classes
 - **FR-001**: The CXF wsdl2java tool MUST accept a new `--client-gen-config` command-line argument.
 - **FR-002**: The `--client-gen-config` value MUST accept a YAML location resolvable from file path or classpath.
 - **FR-003**: The YAML config MUST support a hierarchical structure with:
-  - `x-config-key` string value
-  - `x-static-headers` list of objects with `name`, `value`, and optional `ifExisting`
-  - `x-dynamic-headers` list of fully qualified class names
-  - `x-operations` map keyed by operation name
+   - `x-config-key` string value
+   - `x-base-url` optional string value
+   - `x-jaxb-context-paths` optional list of strings
+   - `x-static-headers` list of concatenated "name=value" strings
+   - `x-dynamic-headers` list of fully qualified class names
+   - `x-operations` map keyed by operation name
 - **FR-004**: The config file MUST first attempt to load from the file system, then fallback to classpath.
 - **FR-005**: When config is not found, the tool MUST fail gracefully with a clear error message.
-- **FR-006**: The generated SEI interface MUST include `@prot.soap.RegisteredSoapClient(resolvedConfigKey)` for every generated client.
+- **FR-006**: The generated SEI interface MUST include `@prot.soap.SoapClient(value=resolvedConfigKey)` for every generated client.
 - **FR-007**: `resolvedConfigKey` MUST use `configKey` when non-null/non-empty, otherwise MUST use the portType name.
-- **FR-008**: If `x-static-headers` is present and non-empty, generated SEI MUST include `@prot.soap.StaticHeaders` representing configured header tuples.
-- **FR-009**: If `x-dynamic-headers` is present and non-empty, generated SEI MUST include `@prot.soap.DynamicHeaders` with configured FQCN values.
-- **FR-010**: `dynamicHeaders` entries MUST be fully qualified class names.
-- **FR-011**: For each generated operation method, `@prot.soap.SoapAction(resolvedActionName)` MUST always be emitted.
-- **FR-012**: `resolvedActionName` MUST use configured `x-operations.<operation>.action` when non-empty, otherwise MUST fallback to the operation name.
-- **FR-013**: The canonical YAML field names MUST use kebab-case (`x-config-key`, `x-static-headers`, `x-dynamic-headers`, `x-operations`); these MUST be mapped to camelCase Java model fields (`configKey`, `staticHeaders`, `dynamicHeaders`, `operations`) by the YAML parser.
-- **FR-014**: All annotation classes MUST use the `prot.soap.*` package namespace (@prot.soap.RegisteredSoapClient, @prot.soap.StaticHeaders, @prot.soap.DynamicHeaders, @prot.soap.SoapAction).
-- **FR-014**: Plugin-level tests MUST be implemented in `prot-cxf-codegen/prot-cxf-codegen-plugin` using `maven-plugin-testing-harness` (or equivalent in-process Mojo harness), not Maven Invoker.
-- **FR-015**: Tests MUST execute wsdl2java with frontend `prot-cxf` and use copied fixture `src/test/resources/backend/soap/ping.wsdl`.
-- **FR-016**: Test resources MUST include at least two distinct YAML configs (`clientGenConfig` A and B) producing different expected annotation outcomes.
-- **FR-017**: A dedicated harness test MUST verify scenario A applies expected class-level and operation-level annotations to generated sources.
-- **FR-018**: A dedicated harness test MUST verify scenario B applies its own expected annotations and does not match scenario A assertions.
-- **FR-019**: A dedicated harness test MUST verify generation succeeds without `clientGenConfig` and emits no config-driven custom annotations.
-- **FR-020**: All new tests MUST pass during `mvn test` without network access or external Maven process invocation.
-- **FR-021**: The no-config scenario MUST be treated as backward-compatible baseline behavior.
+- **FR-008**: `@prot.soap.SoapClient.baseUrl` MUST be emitted only when top-level config defines a value.
+- **FR-009**: `@prot.soap.SoapClient.jaxbContextPaths` MUST be emitted only when top-level config defines non-empty values.
+- **FR-010**: Top-level static and dynamic headers MUST be emitted inside `@prot.soap.SoapClient(staticHeaders=..., dynamicHeaders=...)` and MUST NOT generate separate type-level header annotations.
+- **FR-011**: `dynamicHeaders` entries (top-level and operation-level) MUST be fully qualified class names.
+- **FR-012**: For each generated operation method, `@prot.soap.SoapAction(resolvedActionName)` MUST always be emitted.
+- **FR-013**: `resolvedActionName` MUST use configured `x-operations.<operation>.action` when non-empty; else MUST fallback to WSDL binding `soap:operation@soapAction`; else operation name.
+- **FR-014**: Operation config MUST support `staticHeaders` and `dynamicHeaders`; when either is non-empty, `@prot.soap.SoapMethodHeader` MUST be emitted.
+- **FR-015**: `@prot.soap.SoapMethodHeader` MUST NOT be emitted when both operation-level static and dynamic headers are absent/empty.
+- **FR-016**: Canonical YAML keys are kebab-case with `x-` prefix, mapped to Java camelCase fields by YAML parser.
+- **FR-017**: YAML alias spellings MUST be accepted for top-level fields: `baseUrl|baseurl|base-url` → `baseUrl`; `jaxbContextPaths|jaxb-context-paths|jaxbcontextpaths` → `jaxbContextPaths`; `x-static-headers|static-headers|staticHeaders` → `staticHeaders`; `x-dynamic-headers|dynamic-headers|dynamicHeaders` → `dynamicHeaders`.
+- **FR-017a**: Static headers in YAML MUST be specified as concatenated strings in format `"name=value"` (e.g., `"X-Calc-Op=minus"`), not as objects with separate `name` and `value` fields.
+- **FR-017b**: Static headers in generated `@prot.soap.SoapClient` and `@prot.soap.SoapMethodHeader` annotations MUST be emitted as array of concatenated strings (e.g., `staticHeaders = {"X-Calc-Op=minus", "X-Overflow=false"}`).
+- **FR-017c**: Dynamic headers in YAML MUST be specified as list of fully qualified class names (FQCNs) as strings.
+- **FR-017d**: Dynamic headers in generated `@prot.soap.SoapClient` and `@prot.soap.SoapMethodHeader` annotations MUST be emitted as array of Class<?> references (e.g., `dynamicHeaders = {prot.soap.header.SoapHeaderAContributor.class, prot.soap.header.SoapHeaderBContributor.class}`) with proper imports.
+- **FR-018**: Operation-level `x-operations.<operationName>` config MUST support YAML aliases for static and dynamic headers: `x-static-headers`, `static-headers`, `staticHeaders`, `staticheaders` all map to `staticHeaders`; `x-dynamic-headers`, `dynamic-headers`, `dynamicHeaders`, `dynamicheaders` all map to `dynamicHeaders`.
+- **FR-019**: All generated annotations MUST use `prot.soap.*` namespace (@prot.soap.SoapClient, @prot.soap.SoapAction, @prot.soap.SoapMethodHeader).
+- **FR-020**: Plugin-level tests MUST be implemented in `prot-cxf-codegen/prot-cxf-codegen-plugin` using `maven-plugin-testing-harness` (or equivalent in-process harness), not Maven Invoker.
+- **FR-021**: Tests MUST execute wsdl2java with frontend `prot-cxf` and use copied fixture `src/test/resources/backend/soap/ping.wsdl`.
+- **FR-022**: Test resources MUST include at least two distinct YAML configs (`clientGenConfig` A and B) and a no-config scenario.
+- **FR-023**: Harness tests MUST verify class-level field emission, operation-level header emission rules, and SoapAction fallback behavior.
+- **FR-024**: All new tests MUST pass during `mvn test` without network access or external Maven process invocation.
+- **FR-025**: `prot-cxf-codegen-soap-client` module tests MUST remain green to confirm generated-annotation compatibility.
+- **FR-026**: The no-config scenario MUST be treated as backward-compatible baseline behavior.
+- **FR-027**: Unit test coverage for `prot.cxf.plugin.*` classes MUST reach minimum 80% line coverage; all tests MUST pass with code coverage reports generated.
+- **FR-028**: Test scenarios MUST cover: (1) ping.wsdl without config, (2) ping.wsdl with config, (3) calculator.wsdl with multi-operation headers and override variations, (4) specific test cases for header format transformations (concatenated strings for static, Class<?> for dynamic).
 
 ### Key Entities *(include if feature involves data)*
 
-- **ClientGenConfig**: Root YAML model containing `configKey`, `staticHeaders`, `dynamicHeaders`, and `operations`
-- **StaticHeader**: Header tuple with `name`, `value`, and optional `ifExisting`
-- **OperationConfig**: Per-operation configuration containing `action`
-- **SEIGenerator**: Modified CXF SEI generator that resolves keys/actions and emits required annotations
+- **ClientGenConfig**: Root YAML model containing `configKey`, optional `baseUrl`, optional `jaxbContextPaths`, top-level `staticHeaders` (list of "X=Y" strings), top-level `dynamicHeaders` (list of FQCN strings), and `operations` map
+- **StaticHeader** (Deprecated for new format): Previously used `{name, value, ifExisting}` tuple; replaced by simple concatenated strings at YAML level (internal model may keep both for backward compatibility)
+- **OperationConfig**: Per-operation configuration containing `action`, `staticHeaders` (list of "X=Y" strings), and `dynamicHeaders` (list of FQCN strings)
 
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
-- **SC-001**: Generated SEI always includes `@prot.soap.RegisteredSoapClient(resolvedConfigKey)` with fallback behavior verified for empty `configKey`.
-- **SC-002**: Generated SEI includes `@prot.soap.StaticHeaders` and/or `@prot.soap.DynamicHeaders` only when YAML provides corresponding non-empty values.
+- **SC-001**: Generated SEI always includes `@prot.soap.SoapClient(value=resolvedConfigKey)` with fallback behavior verified for empty `configKey`.
+- **SC-002**: Generated SEI emits `baseUrl`, `jaxbContextPaths`, `staticHeaders` (as "X=Y" strings), and `dynamicHeaders` (as Class<?> references) inside `@prot.soap.SoapClient` only when configured.
+- **SC-002a**: Static headers in generated annotations are concatenated strings in format `"X=Y"` (e.g., `staticHeaders = {"X-Calc-Op=minus", "X-Overflow=false"}`).
+- **SC-002b**: Dynamic headers in generated annotations are Class<?> references (e.g., `dynamicHeaders = {prot.soap.header.SoapHeaderAContributor.class}`).
 - **SC-003**: Three harness tests (config A, config B, no config) pass consistently in `prot-cxf-codegen/prot-cxf-codegen-plugin`.
-- **SC-004**: For each generated operation, `@prot.soap.SoapAction` is present and uses configured `action` or operation-name fallback.
+- **SC-004**: For each generated operation, `@prot.soap.SoapAction` is present and uses configured `action`, else WSDL binding `soapAction`, else operation-name fallback.
+- **SC-004a**: Operation-level `@prot.soap.SoapMethodHeader` emits staticHeaders as concatenated strings and dynamicHeaders as Class<?> references using the same format as class-level.
 - **SC-005**: Both file-path-first and classpath-fallback config loading behaviors are verified by automated tests.
-- **SC-006**: All Mojo unit tests (`FR-017` through `FR-020`) pass in under 30 seconds on a standard developer machine.
+- **SC-006**: All Mojo/harness tests (`FR-019` through `FR-023`) pass in under 30 seconds on a standard developer machine.
 - **SC-007**: Unit test coverage for `prot.cxf.plugin.*` classes reaches at least 80 % of lines exercised by the new test suite.
+- **SC-007a**: Tests cover new YAML field aliases for `staticHeaders` and `dynamicHeaders` normalization.
+- **SC-007b**: Tests verify header format transformation from YAML to generated annotation code (string concatenation for static, Class<?> for dynamic).
 - **SC-008**: No test relies on spawning an external Maven process; all assertions run within the same JVM as the test runner.
-- **SC-009**: YAML kebab-case field names (`x-config-key`, `x-static-headers`, `x-dynamic-headers`, `x-operations`) are correctly mapped to Java camelCase model fields by SnakeYAML parser.
+- **SC-009**: YAML aliases for `baseUrl`, `jaxbContextPaths`, `staticHeaders`, and `dynamicHeaders` are correctly normalized to Java model fields.
+- **SC-010**: Operation-level `@prot.soap.SoapMethodHeader` is emitted only when operation headers exist, and omitted otherwise.
+- **SC-011**: `prot-cxf-codegen-soap-client` module tests pass unchanged after generator updates.
+- **SC-012**: All unit tests pass with code coverage reports confirming ≥80% line coverage for prot.cxf.plugin package.
+- **SC-013**: Test matrix includes four distinct scenarios: (1) ping.wsdl without config (no custom annotations), (2) ping.wsdl with config (basic annotations), (3) calculator.wsdl with multi-operation headers and overrides (complex scenarios), (4) specific cases for concatenated string and Class<?> format validation.
+- **SC-014**: Operation-level YAML header field aliases (`x-static-headers`, `static-headers`, `staticHeaders`, `staticheaders` and `x-dynamic-headers`, `dynamic-headers`, `dynamicHeaders`, `dynamicheaders`) are all correctly recognized and normalized.
 
 ## Assumptions
 

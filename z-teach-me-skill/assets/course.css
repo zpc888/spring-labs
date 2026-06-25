@@ -1,0 +1,171 @@
+:root {
+  color-scheme: light dark;
+  --bg: #fcfcfb;
+  --fg: #1c1c1c;
+  --muted: #5e5a55;
+  --line: #d8d3cc;
+  --accent: #7a3cff;
+  --accent-soft: #f2ebff;
+  --good: #1f7a45;
+  --bad: #b3261e;
+  --card: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #121212;
+    --fg: #efefef;
+    --muted: #beb8b0;
+    --line: #35322e;
+    --accent: #b89cff;
+    --accent-soft: #211733;
+    --good: #77d39a;
+    --bad: #ff8a80;
+    --card: #191919;
+  }
+}
+
+html {
+  font-size: 18px;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+  line-height: 1.6;
+}
+
+main {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 3rem 1.25rem 4rem;
+}
+
+h1, h2, h3 {
+  line-height: 1.2;
+  margin-top: 2rem;
+}
+
+h1 {
+  font-size: 2.2rem;
+  margin-top: 0;
+}
+
+p, li, td, th {
+  max-width: 42rem;
+}
+
+a {
+  color: var(--accent);
+}
+
+code, pre {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+pre {
+  overflow-x: auto;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 0.6rem;
+  padding: 1rem;
+}
+
+.lede {
+  font-size: 1.1rem;
+  color: var(--muted);
+}
+
+.card,
+.callout,
+.quiz {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  padding: 1rem 1.1rem;
+  margin: 1rem 0;
+}
+
+.callout {
+  border-left: 0.35rem solid var(--accent);
+}
+
+.small {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0 1.5rem;
+}
+
+th, td {
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+  padding: 0.65rem 0.5rem;
+}
+
+.pipeline {
+  padding-left: 1.2rem;
+}
+
+.pipeline li {
+  margin: 0.5rem 0;
+}
+
+.quiz-options {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+}
+
+.quiz button {
+  font: inherit;
+  text-align: left;
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.7rem;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.quiz button:hover,
+.quiz button:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.quiz-feedback {
+  min-height: 1.5rem;
+  margin-top: 0.75rem;
+  font-weight: 600;
+}
+
+.quiz-feedback.good {
+  color: var(--good);
+}
+
+.quiz-feedback.bad {
+  color: var(--bad);
+}
+
+.next-steps li {
+  margin-bottom: 0.45rem;
+}
+
+@media print {
+  body {
+    background: #fff;
+    color: #000;
+  }
+
+  .quiz button {
+    border-color: #999;
+  }
+}
