@@ -15,5 +15,6 @@ rootProject.name = 'spring-labs'
 include 'z-spring-bean-lifecycle'
 includeBuild 'z-spring-gateway'
 include 'z-spring-method-argument-resolver'
+include 'z-sb4-with-jackson-v3-and-v2'
 
 includeBuild 'prot-cxf-codegen'
