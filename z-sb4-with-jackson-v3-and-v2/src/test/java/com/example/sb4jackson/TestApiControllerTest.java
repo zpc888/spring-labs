@@ -7,6 +7,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.test.web.servlet.client.RestTestClient;
+import org.springframework.web.client.RestTemplate;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.util.Date;
@@ -124,5 +127,14 @@ class TestApiControllerTest {
                 .body("stringField", org.hamcrest.Matchers.equalTo("hello-v2"))
                 .body("integerField", org.hamcrest.Matchers.equalTo(456))
                 .body("dateFiled", org.hamcrest.Matchers.equalTo(expectedDate));
+    }
+
+    @Test
+    void testHavingMappingJack2HttpMessageConverter() {
+        RestTemplate restTemplate = new RestTemplate();
+        int i = 0;
+        for (HttpMessageConverter converter : restTemplate.getMessageConverters()) {
+            System.out.println((++i) + "....." + converter.getClass());
+        }
     }
 }
