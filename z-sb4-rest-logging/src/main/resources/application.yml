@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: rest-logging-in-spring-way
+
+server:
+  port: 8090
+
+#logging:
+#  level:
+#    org:
+#      springframework:
+#        web:
+#          filter:
+#            CommonsRequestLoggingFilter: DEBUG

@@ -16,6 +16,7 @@ include 'z-spring-bean-lifecycle'
 includeBuild 'z-spring-gateway'
 include 'z-spring-method-argument-resolver'
 include 'z-sb4-with-jackson-v3-and-v2'
+include 'z-sb4-rest-logging'
 include 'z-logback-condition-if'
 
 includeBuild 'prot-cxf-codegen'
