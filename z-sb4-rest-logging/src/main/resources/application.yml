@@ -5,6 +5,10 @@ spring:
 server:
   port: 8090
 
+app:
+  integration:
+    httpbin:
+      url: http://localhost:8091
 #logging:
 #  level:
 #    org:

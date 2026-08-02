@@ -6,3 +6,72 @@ Content-Type: application/json
   "username": "user",
   "password": "password"
 }
+
+###
+GET http://localhost:8090/api/httpbin/status/get/200
+Content-Type: application/json
+
+###
+GET http://localhost:8090/api/httpbin/status/post/200
+Content-Type: application/json
+
+###
+GET http://localhost:8090/api/httpbin/status/post/400
+Content-Type: application/json
+
+###
+POST http://localhost:8090/api/httpbin/batch
+Content-Type: application/json
+
+[
+  {
+    "method": "GET",
+    "uri": "/status/200"
+  },
+  {
+    "method": "POST",
+    "uri": "/response-headers",
+    "queryParms": {
+      "one": "abc",
+      "two": "xyz"
+    }
+  }
+]
+
+###
+POST http://localhost:8090/api/httpbin/parallel-batch
+Content-Type: application/json
+
+[
+  {
+    "method": "GET",
+    "uri": "/delay/3"
+  },
+  {
+    "method": "POST",
+    "uri": "/delay/4"
+  },
+  {
+    "method": "POST",
+    "uri": "/delay/5"
+  }
+]
+
+###
+POST http://localhost:8090/api/httpbin/batch
+Content-Type: application/json
+
+[
+  {
+    "method": "GET",
+    "uri": "/delay/3"
+  },
+  {
+    "method": "POST",
+    "uri": "/delay/4"
+  },
+  {
+    "method": "POST",
+    "uri": "/delay/5"
+  }
+]
