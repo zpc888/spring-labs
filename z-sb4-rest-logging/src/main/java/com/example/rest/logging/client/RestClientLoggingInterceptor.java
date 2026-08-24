@@ -3,6 +3,7 @@ package com.example.rest.logging.client;
 import tools.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.client.ClientHttpRequestExecution;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
@@ -12,6 +13,7 @@ import org.springframework.util.StreamUtils;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -56,17 +58,18 @@ public class RestClientLoggingInterceptor implements ClientHttpRequestIntercepto
         Object resBodyParsed = parseBody(rawResBody);
 
         // 3. Map to Structured Object
-        var logPayload = Map.of(
-                "timestamp", Instant.now().toString(),
-                "direction", "OUTBOUND",
-                "method", request.getMethod().name(),
-                "uri", request.getURI().toString(),
-                "requestHeaders", cleanedHeaders,
-                "requestBody", reqBodyParsed,
-                "responseStatus", response.getStatusCode().value(),
-                "responseBody", resBodyParsed,
-                "durationMs", duration
-        );
+        Map<String, Object> logPayload = new LinkedHashMap<>();
+        logPayload.put("timestamp", Instant.now().toString());
+        logPayload.put("traceId", MDC.get("traceId"));
+        logPayload.put("spanId", MDC.get("spanId"));
+        logPayload.put("direction", "OUTBOUND");
+        logPayload.put("method", request.getMethod().name());
+        logPayload.put("uri", request.getURI().toString());
+        logPayload.put("requestHeaders", cleanedHeaders);
+        logPayload.put("requestBody", reqBodyParsed);
+        logPayload.put("responseStatus", response.getStatusCode().value());
+        logPayload.put("responseBody", resBodyParsed);
+        logPayload.put("durationMs", duration);
 
         // 4. Print structured JSON string
         try {

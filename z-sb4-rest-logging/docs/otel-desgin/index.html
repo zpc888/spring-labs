@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>z-sb4-rest-logging Observability Design</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #131a33;
+      --text: #e6ebff;
+      --muted: #aeb9e1;
+      --accent: #79a6ff;
+      --ok: #76d6a6;
+      --warn: #ffd27a;
+      --line: #2a386a;
+      --chip: #1d2750;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+    }
+    .wrap {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 28px 18px 80px;
+    }
+    h1, h2, h3 {
+      margin-top: 1.2em;
+      margin-bottom: 0.4em;
+      line-height: 1.2;
+    }
+    h1 { font-size: 2rem; }
+    h2 { font-size: 1.45rem; border-bottom: 1px solid var(--line); padding-bottom: 0.35rem; }
+    h3 { font-size: 1.12rem; color: var(--accent); }
+    p, li { color: var(--text); }
+    .muted { color: var(--muted); }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px;
+      margin: 14px 0;
+    }
+    .chip {
+      display: inline-block;
+      background: var(--chip);
+      border: 1px solid var(--line);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 2px 10px;
+      margin-right: 6px;
+      margin-bottom: 8px;
+      font-size: 0.84rem;
+    }
+    code {
+      background: #0f1733;
+      color: #cce0ff;
+      border: 1px solid #2f448f;
+      border-radius: 6px;
+      padding: 0.1rem 0.4rem;
+    }
+    pre {
+      background: #0f1733;
+      border: 1px solid #2f448f;
+      border-radius: 10px;
+      overflow-x: auto;
+      padding: 12px;
+      color: #d9e7ff;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0 14px;
+    }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: #17224a;
+      color: #d6e3ff;
+    }
+    .ok { color: var(--ok); }
+    .warn { color: var(--warn); }
+    .small { font-size: 0.93rem; }
+    .step { margin: 6px 0; }
+    .diagram {
+      width: 100%;
+      background: #0f1733;
+      border: 1px solid #2f448f;
+      border-radius: 12px;
+      padding: 10px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>z-sb4-rest-logging: Observability Design (Beginner Guide)</h1>
+    <p class="muted">
+      This page explains how <strong>Spring Boot app + Prometheus + Loki + Grafana + Jaeger + OpenTelemetry Collector</strong>
+      work together in this project, what each UI is for, and what to query.
+    </p>
+
+    <div class="panel">
+      <span class="chip">App (host): 8090</span>
+      <span class="chip">Grafana: 13000</span>
+      <span class="chip">Prometheus: 19090</span>
+      <span class="chip">Loki: 13100</span>
+      <span class="chip">Jaeger UI: 16686</span>
+      <span class="chip">OTLP (host): 14317 / 14318</span>
+    </div>
+
+    <h2>1. Big picture</h2>
+    <p>
+      The app runs on your host machine (<code>bootRun</code>). Telemetry services run in Docker Compose.
+      You get three pillars:
+    </p>
+    <ul>
+      <li><strong>Metrics</strong> -> Prometheus -> Grafana</li>
+      <li><strong>Logs</strong> -> Promtail -> Loki -> Grafana</li>
+      <li><strong>Traces</strong> -> OTel Collector -> Jaeger (and query in Grafana too)</li>
+    </ul>
+
+    <h2>2. Detailed architecture diagram</h2>
+    <div class="diagram">
+      <svg width="1160" height="700" viewBox="0 0 1160 700" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Observability flow diagram">
+        <defs>
+          <marker id="arrowMetrics" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L9,3 z" fill="#68d391" />
+          </marker>
+          <marker id="arrowLogs" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L9,3 z" fill="#f6ad55" />
+          </marker>
+          <marker id="arrowTraces" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L9,3 z" fill="#b794f4" />
+          </marker>
+          <marker id="arrowQuery" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L9,3 z" fill="#63b3ed" />
+          </marker>
+          <style>
+            .box { fill:#17224a; stroke:#8eb4ff; stroke-width:1.4; rx:12; ry:12; }
+            .boxhost { fill:#1e2b5a; stroke:#98b9ff; stroke-width:1.6; rx:12; ry:12; }
+            .lane { fill:#101938; stroke:#2f448f; stroke-width:1; rx:10; ry:10; }
+            .label { fill:#e8efff; font: 14px sans-serif; }
+            .sub { fill:#aeb9e1; font: 12px sans-serif; }
+            .laneTitle { fill:#d3e2ff; font: 14px sans-serif; font-weight:700; }
+            .arrowMetrics { stroke:#68d391; stroke-width:3; marker-end:url(#arrowMetrics); fill:none; }
+            .arrowLogs { stroke:#f6ad55; stroke-width:3; marker-end:url(#arrowLogs); fill:none; }
+            .arrowTraces { stroke:#b794f4; stroke-width:3; marker-end:url(#arrowTraces); fill:none; }
+            .arrowQuery { stroke:#63b3ed; stroke-width:2.5; marker-end:url(#arrowQuery); fill:none; }
+            .title { fill:#ffffff; font: 16px sans-serif; font-weight:700; }
+            .legendText { fill:#d8e5ff; font: 12px sans-serif; }
+          </style>
+        </defs>
+
+        <text x="20" y="28" class="title">Host machine</text>
+        <text x="430" y="28" class="title">Docker Compose network</text>
+
+        <rect class="boxhost" x="20" y="45" width="360" height="235" />
+        <text class="label" x="40" y="76">Spring Boot app (z-sb4-rest-logging)</text>
+        <text class="sub" x="40" y="100">Port: 8090</text>
+        <text class="sub" x="40" y="124">Metrics endpoint: /actuator/prometheus</text>
+        <text class="sub" x="40" y="148">Trace export (OTLP): localhost:14317</text>
+        <text class="sub" x="40" y="172">Writes JSON logs: build/rest-logging.json</text>
+
+        <rect class="boxhost" x="20" y="305" width="360" height="95" />
+        <text class="label" x="40" y="338">Host file system</text>
+        <text class="sub" x="40" y="362">./build/rest-logging.json</text>
+
+        <rect class="box" x="780" y="45" width="300" height="95" />
+        <text class="label" x="800" y="76">Grafana container</text>
+        <text class="sub" x="800" y="100">Datasources: Prometheus, Loki, Jaeger</text>
+        <text class="sub" x="800" y="122">UI host port: 13000</text>
+
+        <rect class="lane" x="430" y="170" width="650" height="120" />
+        <text class="laneTitle" x="445" y="193">Metrics lane (green)</text>
+        <rect class="box" x="450" y="205" width="280" height="70" />
+        <text class="label" x="468" y="232">Prometheus</text>
+        <text class="sub" x="468" y="252">host.docker.internal:8090/actuator/prometheus</text>
+
+        <rect class="lane" x="430" y="305" width="650" height="150" />
+        <text class="laneTitle" x="445" y="328">Logs lane (orange)</text>
+        <rect class="box" x="450" y="345" width="280" height="90" />
+        <text class="label" x="468" y="372">Promtail</text>
+        <text class="sub" x="468" y="394">tails /var/log/z-sb4-rest-logging/rest-logging.json</text>
+        <text class="sub" x="468" y="416">bind mount: ./build -> /var/log/z-sb4-rest-logging</text>
+        <rect class="box" x="760" y="345" width="300" height="90" />
+        <text class="label" x="778" y="372">Loki</text>
+        <text class="sub" x="778" y="394">stores indexed log streams</text>
+        <text class="sub" x="778" y="416">UI/API host port: 13100</text>
+
+        <rect class="lane" x="430" y="470" width="650" height="150" />
+        <text class="laneTitle" x="445" y="493">Tracing lane (purple)</text>
+        <rect class="box" x="450" y="510" width="280" height="90" />
+        <text class="label" x="468" y="537">OTel Collector</text>
+        <text class="sub" x="468" y="559">receives OTLP at 4317/4318</text>
+        <text class="sub" x="468" y="581">host mapped: 14317 / 14318</text>
+        <rect class="box" x="760" y="510" width="300" height="90" />
+        <text class="label" x="778" y="537">Jaeger</text>
+        <text class="sub" x="778" y="559">stores and serves trace spans</text>
+        <text class="sub" x="778" y="581">UI host port: 16686</text>
+
+        <path class="arrowMetrics" d="M380 125 L450 240" />
+        <text class="sub" x="390" y="162">metrics scraped</text>
+
+        <path class="arrowLogs" d="M200 280 L200 305" />
+        <path class="arrowLogs" d="M380 352 L450 390" />
+        <text class="sub" x="280" y="344">file read via bind mount</text>
+        <path class="arrowLogs" d="M730 390 L760 390" />
+        <text class="sub" x="690" y="378">push logs</text>
+
+        <path class="arrowTraces" d="M380 148 L420 148 L420 555 L450 555" />
+        <text class="sub" x="300" y="542">OTLP traces</text>
+        <path class="arrowTraces" d="M730 555 L760 555" />
+        <text class="sub" x="690" y="542">export traces</text>
+
+        <path class="arrowQuery" d="M780 95 L730 240" />
+        <text class="sub" x="735" y="166">query metrics</text>
+        <path class="arrowQuery" d="M780 110 L730 390" />
+        <text class="sub" x="738" y="280">query logs</text>
+        <path class="arrowQuery" d="M830 140 L830 510" />
+        <text class="sub" x="840" y="330">query traces</text>
+
+        <rect class="box" x="20" y="430" width="360" height="160" />
+        <text class="label" x="40" y="458">Legend</text>
+        <line x1="40" y1="486" x2="120" y2="486" class="arrowMetrics" />
+        <text class="legendText" x="130" y="490">Metrics flow</text>
+        <line x1="40" y1="516" x2="120" y2="516" class="arrowLogs" />
+        <text class="legendText" x="130" y="520">Logs flow</text>
+        <line x1="40" y1="546" x2="120" y2="546" class="arrowTraces" />
+        <text class="legendText" x="130" y="550">Traces flow</text>
+        <line x1="40" y1="576" x2="120" y2="576" class="arrowQuery" />
+        <text class="legendText" x="130" y="580">Grafana query path</text>
+      </svg>
+    </div>
+
+    <h2>3. What each component does</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Component</th>
+          <th>Main job</th>
+          <th>Input</th>
+          <th>Output / UI</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Spring Boot app</td>
+          <td>Produces logs, metrics, traces</td>
+          <td>HTTP traffic + app logic</td>
+          <td>Metrics endpoint, JSON log file, OTLP spans</td>
+        </tr>
+        <tr>
+          <td>Prometheus</td>
+          <td>Scrapes and stores time-series metrics</td>
+          <td><code>/actuator/prometheus</code></td>
+          <td>Prometheus UI + Grafana datasource</td>
+        </tr>
+        <tr>
+          <td>Promtail</td>
+          <td>Tails log file and ships logs</td>
+          <td><code>build/rest-logging.json</code> (via bind mount)</td>
+          <td>Log streams in Loki</td>
+        </tr>
+        <tr>
+          <td>Loki</td>
+          <td>Stores and indexes logs by labels</td>
+          <td>Promtail log streams</td>
+          <td>Loki API + Grafana logs</td>
+        </tr>
+        <tr>
+          <td>OTel Collector</td>
+          <td>Receives OTLP traces and forwards them</td>
+          <td>App OTLP exporter</td>
+          <td>Trace pipeline into Jaeger</td>
+        </tr>
+        <tr>
+          <td>Jaeger</td>
+          <td>Stores and visualizes traces</td>
+          <td>Traces from OTel Collector</td>
+          <td>Jaeger UI + Grafana datasource</td>
+        </tr>
+        <tr>
+          <td>Grafana</td>
+          <td>Unified UI across metrics, logs, traces</td>
+          <td>Prometheus + Loki + Jaeger datasources</td>
+          <td>Dashboards + Explore view</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>4. Where this is configured in this repo</h2>
+    <ul>
+      <li><code>compose.yaml</code>: containers, ports, mounts</li>
+      <li><code>src/main/resources/logback-spring.xml</code>: JSON logging to <code>build/rest-logging.json</code></li>
+      <li><code>src/main/resources/application-local.yml</code>: OTLP trace endpoint (<code>localhost:14317</code>) + 100% sampling</li>
+      <li><code>observability/prometheus/prometheus.yml</code>: scrape job for app metrics</li>
+      <li><code>observability/promtail/promtail.yml</code>: file tailing and Loki push</li>
+      <li><code>observability/otel/collector.yml</code>: OTLP receiver and Jaeger exporter</li>
+      <li><code>observability/grafana/provisioning/datasources/datasources.yml</code>: datasource wiring</li>
+    </ul>
+
+    <h2>5. How to use each UI (newbie walkthrough)</h2>
+
+    <h3>5.1 Prometheus UI: metrics source of truth</h3>
+    <p><strong>URL:</strong> <code>http://localhost:19090</code></p>
+    <div class="panel small">
+      <div class="step">1. Open <strong>Status -> Targets</strong>. Verify job <code>z-sb4-rest-logging</code> is <span class="ok">UP</span>.</div>
+      <div class="step">2. Go to <strong>Graph</strong> and run PromQL queries.</div>
+      <div class="step">3. Use time range (top right) to inspect last 5m/15m/1h.</div>
+    </div>
+    <p>Useful starter PromQL:</p>
+    <pre>up{job="z-sb4-rest-logging"}
+
+# request throughput (requests per second)
+sum(rate(http_server_requests_seconds_count[1m]))
+
+# p95 latency by URI (if labels exist)
+histogram_quantile(
+  0.95,
+  sum(rate(http_server_requests_seconds_bucket[5m])) by (le, uri)
+)
+
+# error rate (5xx)
+sum(rate(http_server_requests_seconds_count{status=~"5.."}[5m]))</pre>
+
+    <h3>5.2 Grafana UI: one place for all telemetry</h3>
+    <p><strong>URL:</strong> <code>http://localhost:13000</code> (default: <code>admin/admin</code>)</p>
+    <div class="panel small">
+      <div class="step">1. Open <strong>Connections -> Data sources</strong>; confirm Prometheus, Loki, Jaeger are healthy.</div>
+      <div class="step">2. Open <strong>Explore</strong>; pick datasource by query type:</div>
+      <ul>
+        <li>Prometheus for metrics</li>
+        <li>Loki for logs</li>
+        <li>Jaeger for trace search</li>
+      </ul>
+    </div>
+    <p>Useful LogQL in Grafana Explore (Loki datasource):</p>
+    <pre>{job="z-sb4-rest-logging"}
+{job="z-sb4-rest-logging"} |= "ERROR"
+{job="z-sb4-rest-logging"} |= "Exception"
+{job="z-sb4-rest-logging"} | json | level="ERROR"
+{job="z-sb4-rest-logging"} | json | traceId!=""</pre>
+    <p class="small muted">
+      Tip: because Promtail extracts <code>traceId</code> and <code>spanId</code>, you can jump from a suspicious log line to matching trace investigations.
+    </p>
+
+    <h3>5.3 Jaeger UI: distributed trace investigation</h3>
+    <p><strong>URL:</strong> <code>http://localhost:16686</code></p>
+    <div class="panel small">
+      <div class="step">1. In the left search panel, select service (for example app service name).</div>
+      <div class="step">2. Choose operation (or all), and set lookback (last 15 minutes is a good start).</div>
+      <div class="step">3. Click <strong>Find Traces</strong>, open a trace, inspect span waterfall and timing.</div>
+      <div class="step">4. Look for high-latency spans, retries, or downstream call bottlenecks.</div>
+    </div>
+
+    <h2>6. End-to-end troubleshooting path (practical)</h2>
+    <ol>
+      <li>Latency spike? Start in Grafana metrics panel / Prometheus query.</li>
+      <li>Find timeframe + endpoint that slowed down.</li>
+      <li>Open Loki logs for same timeframe and endpoint, filter to WARN/ERROR.</li>
+      <li>Use traceId from logs to inspect trace in Jaeger.</li>
+      <li>Identify slow span (DB call, external HTTP, thread blocking, etc.).</li>
+    </ol>
+
+    <h2>7. Common newbie pitfalls</h2>
+    <ul>
+      <li><strong>Container-vs-host URL confusion:</strong> inside Compose use service names (<code>prometheus:9090</code>), from browser use <code>localhost:19090</code>.</li>
+      <li><strong>No logs in Loki:</strong> app may not be writing file, or Promtail mount is stale after rebuild. Restart Promtail if needed.</li>
+      <li><strong>No traces:</strong> confirm app local profile and OTLP endpoint <code>http://localhost:14317</code>.</li>
+      <li><strong>No metrics:</strong> check Prometheus target state for <code>host.docker.internal:8090</code>.</li>
+    </ul>
+
+    <h2>8. Quick verification checklist</h2>
+    <ul>
+      <li>Prometheus target <code>z-sb4-rest-logging</code> is UP</li>
+      <li>Grafana datasources all connected</li>
+      <li>Loki query returns current logs</li>
+      <li>Jaeger search returns recent traces</li>
+    </ul>
+
+    <p class="muted small">
+      This guide matches current repository config and ports. If compose ports change, update this page accordingly.
+    </p>
+  </div>
+</body>
+</html>

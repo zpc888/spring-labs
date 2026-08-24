@@ -1,0 +1,94 @@
+{
+  "uid": "zsb4-rest-logging-overview",
+  "title": "z-sb4-rest-logging overview",
+  "tags": ["spring", "observability"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "5s",
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Request rate",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(zsb4_rest_operation_calls_total[5m])) by (component, operation, outcome)",
+          "legendFormat": "{{component}}/{{operation}}/{{outcome}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Request duration p95",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(zsb4_rest_operation_duration_seconds_bucket[5m])) by (le, component, operation, outcome))",
+          "legendFormat": "p95 {{component}}/{{operation}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Batch size max",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "targets": [
+        {
+          "expr": "max by (operation) (zsb4_rest_batch_size_max)",
+          "legendFormat": "{{operation}}"
+        }
+      ]
+    },
+    {
+      "type": "logs",
+      "title": "Recent logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "targets": [
+        {
+          "expr": "{app=\"rest-logging-in-spring-way\"}"
+        }
+      ]
+    }
+  ]
+}

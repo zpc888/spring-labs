@@ -1,5 +1,6 @@
 package com.example.rest.logging.control;
 
+import com.example.rest.logging.observability.DemoObservability;
 import org.jspecify.annotations.NonNull;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpRequest;
@@ -23,37 +24,74 @@ import java.util.concurrent.StructuredTaskScope;
 public class DemoController {
 
     private final RestClient restClient;
+    private final DemoObservability observability;
 
-    public DemoController(RestClient restClient) {
+    public DemoController(RestClient restClient, DemoObservability observability) {
         this.restClient = restClient;
+        this.observability = observability;
     }
 
     @PostMapping("/login")
     public Map<String, String> login(@RequestBody Map<String, String> credentials) {
-        // Return a mock token object
-        return Map.of(
+        return observability.observe("inbound", "login", () -> Map.of(
                 "status", "authenticated",
-                "token", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummyData"
-        );
+                "token", "******"
+        ));
     }
 
     @GetMapping("/httpbin/status/{httpMethod}/{status}")
     public Map<String, Object> httpbin(@PathVariable String httpMethod, @PathVariable int status) {
-        RestClient.ResponseSpec respSpec = restClient
-                .method(HttpMethod.valueOf(httpMethod.toUpperCase()))
-                .uri("/status/" + status)
-                .retrieve();
-        String body = getBody(respSpec);
-        return Map.of(
-                String.format("%s-%s-response", httpMethod, status), body
-        );
+        return observability.observe("inbound", "httpbin", () -> {
+            RestClient.ResponseSpec respSpec = restClient
+                    .method(HttpMethod.valueOf(httpMethod.toUpperCase()))
+                    .uri("/status/" + status)
+                    .retrieve();
+            String body = getBody(respSpec);
+            return Map.of(
+                    String.format("%s-%s-response", httpMethod, status), body
+            );
+        });
     }
-
 
     @PostMapping("/httpbin/batch")
     public List<Map<String, Object>> httpbinBatch(@RequestBody List<ReqModel> requests) {
-        List<Map<String, Object>> ret = new ArrayList<>();
-        for (ReqModel reqModel : requests) {
+        return observability.observe("inbound", "httpbin-batch", () -> {
+            observability.recordBatchSize("httpbin-batch", requests.size());
+
+            List<Map<String, Object>> ret = new ArrayList<>();
+            for (ReqModel reqModel : requests) {
+                ret.add(executeRequest(reqModel));
+            }
+            return ret;
+        });
+    }
+
+    @PostMapping("/httpbin/parallel-batch")
+    public List<Map<String, Object>> httpbinParallelBatch(@RequestBody List<ReqModel> requests) {
+        return observability.observe("inbound", "httpbin-parallel-batch", () -> {
+            observability.recordBatchSize("httpbin-parallel-batch", requests.size());
+
+            try (var scope = new StructuredTaskScope.ShutdownOnFailure()) {
+                List<StructuredTaskScope.Subtask<Map<String, Object>>> subtasks = requests.stream()
+                        .map(req -> scope.fork(() -> executeRequest(req)))
+                        .toList();
+
+                scope.join().throwIfFailed();
+
+                return subtasks.stream()
+                        .map(StructuredTaskScope.Subtask::get)
+                        .toList();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException("Parallel batch interrupted", e);
+            } catch (ExecutionException e) {
+                throw new RuntimeException("One or more requests failed", e.getCause());
+            }
+        });
+    }
+
+    private Map<String, Object> executeRequest(ReqModel reqModel) {
+        return observability.observe("outbound", reqModel.getMethod().toLowerCase(), () -> {
             RestClient.RequestBodySpec reqBodySpec = restClient
                     .method(HttpMethod.valueOf(reqModel.getMethod().toUpperCase()))
                     .uri(reqModel::resolveUri);
@@ -66,52 +104,11 @@ public class DemoController {
                 reqBodySpec.contentType(MediaType.APPLICATION_JSON)
                         .body(reqModel.getBody());
             }
-            RestClient.ResponseSpec respSpec = reqBodySpec.retrieve();
-            String body = getBody(respSpec);
-            ret.add(Map.of(
+            String body = getBody(reqBodySpec.retrieve());
+            return Map.of(
                     String.format("%s-%s-response", reqModel.getMethod(), reqModel.getUri()), body
-            ));
-        }
-        return ret;
-    }
-
-    @PostMapping("/httpbin/parallel-batch")
-    public List<Map<String, Object>> httpbinParallelBatch(@RequestBody List<ReqModel> requests) {
-        try (var scope = new StructuredTaskScope.ShutdownOnFailure()) {
-            List<StructuredTaskScope.Subtask<Map<String, Object>>> subtasks = requests.stream()
-                    .map(req -> scope.fork(() -> executeRequest(req)))
-                    .toList();
-
-            scope.join().throwIfFailed();
-
-            return subtasks.stream()
-                    .map(StructuredTaskScope.Subtask::get)
-                    .toList();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException("Parallel batch interrupted", e);
-        } catch (ExecutionException e) {
-            throw new RuntimeException("One or more requests failed", e.getCause());
-        }
-    }
-
-    private Map<String, Object> executeRequest(ReqModel reqModel) {
-        RestClient.RequestBodySpec reqBodySpec = restClient
-                .method(HttpMethod.valueOf(reqModel.getMethod().toUpperCase()))
-                .uri(reqModel::resolveUri);
-        if (reqModel.getHeaders() != null) {
-            for (Map.Entry<String, String> header : reqModel.getHeaders().entrySet()) {
-                reqBodySpec.header(header.getKey(), header.getValue());
-            }
-        }
-        if (reqModel.getBody() != null) {
-            reqBodySpec.contentType(MediaType.APPLICATION_JSON)
-                    .body(reqModel.getBody());
-        }
-        String body = getBody(reqBodySpec.retrieve());
-        return Map.of(
-                String.format("%s-%s-response", reqModel.getMethod(), reqModel.getUri()), body
-        );
+            );
+        });
     }
 
     static class ReqModel {
@@ -124,8 +121,8 @@ public class DemoController {
         public URI resolveUri(UriBuilder uriBuilder) {
             uriBuilder.path(uri);
             if (queryParms != null && !queryParms.isEmpty()) {
-                for (String  key : queryParms.keySet()) {
-                    Object val =  queryParms.get(key);
+                for (String key : queryParms.keySet()) {
+                    Object val = queryParms.get(key);
                     if (val instanceof Collection c) {
                         for (Object o : c) {
                             uriBuilder.queryParam(key, o);

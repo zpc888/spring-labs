@@ -22,19 +22,20 @@ and rest client calling out request/response logging.
 * Docker / Podman
 * Java 21
 
-### 🚀 Mimicking Production Locally (1-Click Run)
-This application uses Spring Boot’s native **Docker Compose Support**. When you run the application profile `local`, 
-Spring will automatically spin up, configure, and wire all required infrastructure containers.
+### 🚀 Observability Stack
+This module now includes Prometheus, Grafana, Loki, Jaeger, and an OpenTelemetry Collector.
 
 ```bash
-# Run from this module so Spring can find compose.yaml
+# Run the app with Spring Boot's Docker Compose support
 ../gradlew bootRun --args='--spring.profiles.active=local'
 ```
 
-*To manage the containers manually instead, use:*
-```bash
-docker compose up -d
-```
+The app stays on the host. Run it with the `local` profile so tracing exports to the collector and the
+structured JSON logs are written to `build/rest-logging.json`. If you prefer to manage the stack manually,
+`docker compose up -d` uses the same service definitions.
+
+Local service ports are mapped to non-default host ports to avoid collisions: httpbin `18091`, Prometheus `19090`,
+Grafana `13000`, OTLP `14317/14318`, and Loki `13100`.
 
 ---
 
@@ -52,3 +53,6 @@ Run local validation before pushing code:
 ## 🔌 API Endpoints & Contracts
 * **Local Swagger UI:** `http://localhost:8090/swagger-ui.html`
 * **Actuator Health Metrics:** `http://localhost:8090/actuator/health`
+* **Prometheus:** `http://localhost:19090`
+* **Grafana:** `http://localhost:13000` (`admin` / `admin`)
+* **Jaeger:** `http://localhost:16686`

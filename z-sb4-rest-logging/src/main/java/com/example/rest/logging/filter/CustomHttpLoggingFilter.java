@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -87,6 +88,8 @@ public class CustomHttpLoggingFilter extends OncePerRequestFilter {
         // 3. Populate JSON Log Object
         HttpExchangeLog exchangeLog = new HttpExchangeLog(
                 Instant.now().toString(),
+                MDC.get("traceId"),
+                MDC.get("spanId"),
                 request.getMethod(),
                 request.getRequestURI() + (request.getQueryString() != null ? "?" + request.getQueryString() : ""),
                 cleanedHeaders,

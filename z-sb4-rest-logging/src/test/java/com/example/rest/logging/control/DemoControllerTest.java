@@ -6,6 +6,7 @@ import org.springframework.http.HttpRequest;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.web.client.RestClient;
+import com.example.rest.logging.observability.DemoObservability;
 
 import java.io.ByteArrayInputStream;
 import java.util.Map;
@@ -14,6 +15,7 @@ import java.util.function.Predicate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -45,10 +47,15 @@ class DemoControllerTest {
             return null;
         }).when(responseSpec).body(String.class);
 
-        DemoController controller = new DemoController(restClient);
+        DemoObservability observability = mock(DemoObservability.class);
+        doAnswer(invocation -> ((java.util.function.Supplier<?>) invocation.getArgument(2)).get())
+                .when(observability)
+                .observe(anyString(), anyString(), any());
+
+        DemoController controller = new DemoController(restClient, observability);
 
         Map<String, Object> result = controller.httpbin("get", 404);
 
-        assertEquals("[no error body]", result.get("get-404-response"));
+        assertEquals("[empty error body]", result.get("get-404-response"));
     }
 }

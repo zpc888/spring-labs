@@ -1,0 +1,14 @@
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+  opentelemetry:
+    tracing:
+      export:
+        otlp:
+          endpoint: http://localhost:14317
+
+app:
+  integration:
+    httpbin:
+      url: http://localhost:18091

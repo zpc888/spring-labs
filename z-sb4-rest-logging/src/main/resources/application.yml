@@ -1,6 +1,9 @@
 spring:
   application:
     name: rest-logging-in-spring-way
+  docker:
+    compose:
+      file: compose.yaml
 
 server:
   port: 8090
@@ -9,10 +12,16 @@ app:
   integration:
     httpbin:
       url: http://localhost:8091
-#logging:
-#  level:
-#    org:
-#      springframework:
-#        web:
-#          filter:
-#            CommonsRequestLoggingFilter: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}

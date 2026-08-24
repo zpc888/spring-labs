@@ -1,5 +1,69 @@
 services:
   httpbin:
-    image: 'kennethreitz/httpbin'
+    image: kennethreitz/httpbin
     ports:
-      - '8091:80'
+      - '18091:80'
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - '19090:9090'
+
+  loki:
+    image: grafana/loki:3.1.1
+    command:
+      - -config.file=/etc/loki/local-config.yaml
+    ports:
+      - '13100:3100'
+
+  promtail:
+    image: grafana/promtail:3.1.1
+    command:
+      - -config.file=/etc/promtail/promtail.yml
+    volumes:
+      - ./observability/promtail/promtail.yml:/etc/promtail/promtail.yml:ro
+      - ./build:/var/log/z-sb4-rest-logging:ro
+    depends_on:
+      - loki
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.76.0
+    environment:
+      COLLECTOR_OTLP_ENABLED: 'true'
+    ports:
+      - '16686:16686'
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.106.1
+    command:
+      - --config=/etc/otel-collector.yml
+    volumes:
+      - ./observability/otel/collector.yml:/etc/otel-collector.yml:ro
+    depends_on:
+      - jaeger
+    ports:
+      - '14317:4317'
+      - '14318:4318'
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/etc/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+      - loki
+      - jaeger
+    ports:
+      - '13000:3000'
