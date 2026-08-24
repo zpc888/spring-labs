@@ -5,6 +5,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import net.logstash.logback.marker.Markers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -18,6 +19,7 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -85,28 +87,20 @@ public class CustomHttpLoggingFilter extends OncePerRequestFilter {
         Object reqBodyParsed = parseBody(request.getContentAsByteArray(), request.getCharacterEncoding());
         Object resBodyParsed = parseBody(response.getContentAsByteArray(), response.getCharacterEncoding());
 
-        // 3. Populate JSON Log Object
-        HttpExchangeLog exchangeLog = new HttpExchangeLog(
-                Instant.now().toString(),
-                MDC.get("traceId"),
-                MDC.get("spanId"),
-                request.getMethod(),
-                request.getRequestURI() + (request.getQueryString() != null ? "?" + request.getQueryString() : ""),
-                cleanedHeaders,
-                reqBodyParsed,
-                response.getStatus(),
-                resBodyParsed,
-                duration
-        );
+        // 3. Populate structured fields so LogstashEncoder writes nested JSON instead of a JSON string in message.
+        Map<String, Object> exchangeLog = new LinkedHashMap<>();
+        exchangeLog.put("timestamp", Instant.now().toString());
+        exchangeLog.put("traceId", MDC.get("traceId"));
+        exchangeLog.put("spanId", MDC.get("spanId"));
+        exchangeLog.put("method", request.getMethod());
+        exchangeLog.put("uri", request.getRequestURI() + (request.getQueryString() != null ? "?" + request.getQueryString() : ""));
+        exchangeLog.put("requestHeaders", cleanedHeaders);
+        exchangeLog.put("requestBody", reqBodyParsed);
+        exchangeLog.put("responseStatus", response.getStatus());
+        exchangeLog.put("responseBody", resBodyParsed);
+        exchangeLog.put("durationMs", duration);
 
-        // 4. Output as Structured JSON
-        try {
-            // Use writeValueAsString for production single-line JSON log aggregation engines (Splunk, ELK)
-            String jsonLog = objectMapper.writeValueAsString(exchangeLog);
-            log.info(jsonLog);
-        } catch (Exception e) {
-            log.error("Failed to serialize HTTP exchange log to JSON", e);
-        }
+        log.info(Markers.appendEntries(exchangeLog), "http_exchange");
     }
 
     private Object parseBody(byte[] buf, String characterEncoding) {

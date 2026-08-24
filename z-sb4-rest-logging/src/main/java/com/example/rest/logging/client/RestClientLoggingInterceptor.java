@@ -1,6 +1,7 @@
 package com.example.rest.logging.client;
 
 import tools.jackson.databind.ObjectMapper;
+import net.logstash.logback.marker.Markers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -71,12 +72,7 @@ public class RestClientLoggingInterceptor implements ClientHttpRequestIntercepto
         logPayload.put("responseBody", resBodyParsed);
         logPayload.put("durationMs", duration);
 
-        // 4. Print structured JSON string
-        try {
-            log.info(objectMapper.writeValueAsString(logPayload));
-        } catch (Exception e) {
-            log.error("Failed to serialize outbound log", e);
-        }
+        log.info(Markers.appendEntries(logPayload), "outbound_http_exchange");
     }
 
     private Object parseBody(String rawBody) {

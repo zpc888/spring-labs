@@ -1,6 +1,7 @@
 package com.example.rest.logging.client;
 
 import tools.jackson.databind.ObjectMapper;
+import net.logstash.logback.marker.Markers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -85,11 +86,7 @@ public class ResilientClientLoggingInterceptor implements ClientHttpRequestInter
     }
 
     private void logStage(Map<String, Object> logPayload) {
-        try {
-            log.info(objectMapper.writeValueAsString(logPayload));
-        } catch (Exception e) {
-            log.error("Failed writing structural log entry", e);
-        }
+        log.info(Markers.appendEntries(logPayload), "outbound_http_stage");
     }
 
     private Object parseJsonContent(String raw) {
